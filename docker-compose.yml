@@ -1,0 +1,48 @@
+networks:
+  sso_network:
+    name: sso_shared_network
+    driver: bridge
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        - DEV=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+    # On ajoute la commande 'migrate' indispensable avant le 'seed'
+    command: >
+      sh -c "python manage.py wait_for_db &&
+             python manage.py migrate &&
+             python manage.py seed_course_type &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=ssodb
+      - DB_USER=ssouser
+      - DB_PASS=ssopassword
+    depends_on:
+      db:
+        condition: service_healthy  # Bloque le démarrage de 'app' tant que 'db' n'est pas sain (healthy)
+
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=ssodb
+      - POSTGRES_USER=ssouser
+      - POSTGRES_PASSWORD=ssopassword
+    # Ce test tourne en boucle dans le conteneur db et passe au vert uniquement quand PG est prêt
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ssouser -d ssodb"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  dev-db-data:
+
