@@ -28,7 +28,7 @@ class Enrollment(models.Model):
     # On utilise une chaîne de caractères 'payments.Order' pour éviter les imports circulaires.
     # null=True et blank=True permettent de gérer d'éventuels cours gratuits sans commande.
     order = models.OneToOneField(
-        'payments.Order',
+        'orders.Order',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

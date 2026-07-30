@@ -45,6 +45,14 @@ INSTALLED_APPS = [
     'categories',
     'courses',
     'tags',
+    'discounts',
+    'carts',
+    'cart_items',
+    'orders',
+    'order_items',
+    'payments',
+    'payment_providers',
+    'enrollments',
     'drf_spectacular',
 
 ]
