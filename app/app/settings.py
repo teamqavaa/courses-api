@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'courses_type',
     'categories',
     'courses',
+    'modules',
     'tags',
     'discounts',
     'carts',
