@@ -13,6 +13,9 @@ class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
 
+    # Utilise le champ 'slug' au lieu de la clé primaire (id/pk) pour les URLs de détail
+    lookup_field = 'slug'
+
     # Intégration de votre classe d'authentification simulée par en-têtes HTTP
     authentication_classes = [LocalJWTAuthentication]
 

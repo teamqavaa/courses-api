@@ -10,7 +10,7 @@ services:
       args:
         - DEV=true
     ports:
-      - "8000:8000"
+      - "8080:8080"
     volumes:
       - ./app:/app
     # On ajoute la commande 'migrate' indispensable avant le 'seed'
@@ -20,7 +20,7 @@ services:
              python manage.py seed_course_type &&
              python manage.py seed_categories &&
              python manage.py seed_courses &&
-             python manage.py runserver 0.0.0.0:8000"
+             python manage.py runserver 0.0.0.0:8080"
     environment:
       - DB_HOST=db
       - DB_NAME=ssodb

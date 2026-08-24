@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     'categories',
     'courses',
     'modules',
+    'lessons',
+    'videos',
     'tags',
     'discounts',
     'carts',
@@ -52,6 +54,10 @@ INSTALLED_APPS = [
     'orders',
     'order_items',
     'payments',
+    'outcomes',
+    'highlights',
+    'learning_points',
+    'resources',
     'payment_providers',
     'enrollments',
     'drf_spectacular',
@@ -87,13 +93,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'app.wsgi.application'
 
+# Les infos du sso
+
+
+SSO_CLIENT_ID = 'UCUWyF4S2sglNWTbrz2Qu07DrEnE1lDZpDPuucPy'
+SSO_CLIENT_SECRET = 'EEglFtVDoVVOWJizri49HQ3RynfDiMzvEVEvN26yceEytFZ7TB9XQkP41GauTzxUESo5u8R0kWmSdlNlxnEoDxFARveSdnNiu78nl5uhU6Qy0CCueXjBNswAWSz2uNvG'
+SSO_SERVER_URL = 'http://localhost:8000'
+
 
 
 # 🔧 CORRECTIF : FUSION COMPLETE ET UNIQUE DE REST_FRAMEWORK (JWT + SPECTACULAR)
 REST_FRAMEWORK = {
-    # 'DEFAULT_AUTHENTICATION_CLASSES': (
-    #     'rest_framework_simplejwt.authentication.JWTAuthentication',
-    # ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'
 }
 
