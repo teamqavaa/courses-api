@@ -95,7 +95,7 @@ USERS = [
         "full_name": "Admin User",
         "display_name": "Admin",
         "bio": "Cool Kid",
-        "email": "admin@example.com",
+        "email": "root@example.com",
         "phone": None,
         "role": "admin",
         "is_staff": True,
