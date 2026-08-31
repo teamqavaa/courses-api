@@ -79,6 +79,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         if self.email:
             self.email = self.email.strip().lower()
+        # Give every profile a short name to display; registration only sends a
+        # full name, so default to its first word unless one was chosen.
+        if not self.display_name and self.full_name:
+            self.display_name = self.full_name.strip().split()[0]
         self.full_clean()
         super().save(*args, **kwargs)
 

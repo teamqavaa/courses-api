@@ -21,6 +21,27 @@ class AuthFlowTests(APITestCase):
         self.assertIn('refresh', res.data)
         self.assertTrue(User.objects.filter(email='ada@example.com').exists())
 
+    def test_register_sets_display_name_from_full_name(self):
+        res = self.client.post(
+            '/api/users/',
+            {
+                'name': 'Ada Lovelace',
+                'email': 'ada@example.com',
+                'password': 'hunter2',
+            },
+            format='json',
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+        user = User.objects.get(email='ada@example.com')
+        self.assertEqual(user.display_name, 'Ada')
+
+    def test_save_keeps_chosen_display_name(self):
+        user = User.objects.create_user(
+            email='e@example.com', password='pw', full_name='Grace Hopper', display_name='Amazing Grace'
+        )
+        user.save()
+        self.assertEqual(user.display_name, 'Amazing Grace')
+
     def test_login_by_email(self):
         User.objects.create_user(email='bob@example.com', password='secret')
         res = self.client.post(
