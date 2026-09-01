@@ -1,8 +1,8 @@
-# carts/views.py
+import jwt
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import AuthenticationFailed
 from django.core.exceptions import ValidationError
 
 from .models import Cart
@@ -13,14 +13,30 @@ from courses.models import Course
 
 class CartViewSet(viewsets.GenericViewSet):
     """
-    ViewSet pour la gestion du panier utilisateur.
+    ViewSet pour la gestion du panier utilisateur via SSO (cookie access_token).
     """
-    permission_classes = [IsAuthenticated]
     serializer_class = CartSerializer
+    permission_classes = []  # Désactive toute vérification de permission DRF sur ce ViewSet
+    authentication_classes = []  # Désactive l'authentification DRF globale sur ce ViewSet
 
-    def get_cart(self, user):
-        """Récupère le panier de l'utilisateur ou en crée un s'il n'existe pas."""
-        cart, _ = Cart.objects.get_or_create(user=user)
+    def get_cart(self, request):
+        """Récupère ou crée le panier basé sur le 'sub' extrait du cookie access_token."""
+        access_token = request.COOKIES.get('access_token')
+
+        if not access_token:
+            raise AuthenticationFailed("Access token manquant dans les cookies.")
+
+        try:
+            payload = jwt.decode(access_token, options={"verify_signature": False})
+            user_sub = payload.get('sub')
+
+            if not user_sub:
+                raise AuthenticationFailed("Le champ 'sub' est absent du token.")
+
+        except jwt.PyJWTError:
+            raise AuthenticationFailed("Access token invalide.")
+
+        cart, _ = Cart.objects.get_or_create(user_id=str(user_sub))
         return cart
 
     @action(detail=False, methods=['get'], url_path='my-cart')
@@ -29,8 +45,7 @@ class CartViewSet(viewsets.GenericViewSet):
         GET /api/carts/my-cart/
         Affiche le contenu du panier et le prix total.
         """
-        cart = self.get_cart(request.user)
-        # Optimisation des requêtes SQL avec prefetch_related
+        cart = self.get_cart(request)
         cart_queryset = Cart.objects.filter(id=cart.id).prefetch_related('items__course').first()
         serializer = self.get_serializer(cart_queryset)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -58,19 +73,17 @@ class CartViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        cart = self.get_cart(request.user)
+        cart = self.get_cart(request)
 
-        # Vérification si le cours est déjà dans le panier
         if CartItem.objects.filter(cart=cart, course=course).exists():
             return Response(
                 {"detail": "Ce cours est déjà dans votre panier."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Création de l'élément avec exécution des validations du modèle (clean())
         try:
             cart_item = CartItem(cart=cart, course=course)
-            cart_item.save()  # Déclenche cart_item.full_clean() défini dans votre modèle
+            cart_item.save()
         except ValidationError as e:
             return Response(
                 {"detail": e.messages[0] if hasattr(e, 'messages') else str(e)},
@@ -86,7 +99,7 @@ class CartViewSet(viewsets.GenericViewSet):
     def remove_item(self, request):
         """
         DELETE /api/carts/remove-item/
-        Body: { "course_id": <int> }  ou query param ?course_id=<int>
+        Body: { "course_id": <int> } ou query param ?course_id=<int>
         Supprime un cours du panier.
         """
         course_id = request.data.get('course_id') or request.query_params.get('course_id')
@@ -97,7 +110,7 @@ class CartViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        cart = self.get_cart(request.user)
+        cart = self.get_cart(request)
 
         try:
             cart_item = CartItem.objects.get(cart=cart, course_id=course_id)
@@ -111,5 +124,3 @@ class CartViewSet(viewsets.GenericViewSet):
                 {"detail": "Ce cours ne se trouve pas dans votre panier."},
                 status=status.HTTP_404_NOT_FOUND
             )
-
-

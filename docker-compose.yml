@@ -1,8 +1,3 @@
-networks:
-  sso_network:
-    name: sso_shared_network
-    driver: bridge
-
 services:
   app:
     build:
@@ -13,7 +8,6 @@ services:
       - "8080:8080"
     volumes:
       - ./app:/app
-    # On ajoute la commande 'migrate' indispensable avant le 'seed'
     command: >
       sh -c "python manage.py wait_for_db &&
              python manage.py migrate &&
@@ -26,9 +20,16 @@ services:
       - DB_NAME=ssodb
       - DB_USER=ssouser
       - DB_PASS=ssopassword
+      - DEBUG=False
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+    env_file:
+      - .env.local
+    # 🟢 Permet au conteneur de joindre votre machine (et donc le SSO sur le port 8000)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
-        condition: service_healthy  # Bloque le démarrage de 'app' tant que 'db' n'est pas sain (healthy)
+        condition: service_healthy
 
   db:
     image: postgres:16-alpine
@@ -38,7 +39,6 @@ services:
       - POSTGRES_DB=ssodb
       - POSTGRES_USER=ssouser
       - POSTGRES_PASSWORD=ssopassword
-    # Ce test tourne en boucle dans le conteneur db et passe au vert uniquement quand PG est prêt
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ssouser -d ssodb"]
       interval: 3s
@@ -47,4 +47,3 @@ services:
 
 volumes:
   dev-db-data:
-

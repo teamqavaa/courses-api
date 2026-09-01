@@ -26,7 +26,5 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'user', 'items', 'items_count', 'total_price', 'created_at', 'updated_at']  # noqa: RUF012
-        read_only_fields = ['id', 'user', 'items', 'items_count', 'total_price', 'created_at', 'updated_at']  # noqa: RUF012
-
-
+        fields = ['id', 'user_id', 'items', 'items_count', 'total_price', 'created_at', 'updated_at']  # noqa: RUF012
+        read_only_fields = ['id', 'user_id', 'items', 'items_count', 'total_price', 'created_at', 'updated_at']  # noqa: RUF012

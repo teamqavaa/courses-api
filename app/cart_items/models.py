@@ -47,7 +47,7 @@ class CartItem(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.course.title} (Panier: {self.cart.user.email})"
+        return f"{self.course.title} (Panier: {self.cart.user_id.email})"
 
     @property
     def price(self):
@@ -68,7 +68,7 @@ class CartItem(models.Model):
         from enrollments.models import Enrollment
 
         # Validation 1 : Vérifier si l'utilisateur a déjà un accès actif au cours
-        if Enrollment.objects.filter(user=self.cart.user, course=self.course, status='active').exists():
+        if Enrollment.objects.filter(user_id=self.cart.user_id, course=self.course, status='active').exists():
             raise ValidationError("Vous êtes déjà inscrit à ce cours.")
 
         # Validation 2 : Vérifier si le cours est accessible/publié
