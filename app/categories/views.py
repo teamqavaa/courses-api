@@ -2,12 +2,13 @@ from rest_framework import viewsets, permissions
 from .models import Category
 from .serializers import CategorySerializer
 from courses_type.authentication import LocalJWTAuthentication  # Votre authentification personnalisée
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    authentication_classes = [LocalJWTAuthentication]
+    authentication_classes = [JWTAuthentication, LocalJWTAuthentication]
 
     def get_queryset(self):
         queryset = super().get_queryset()

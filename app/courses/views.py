@@ -4,6 +4,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 # Imports de vos modules d'authentification et de permissions locaux
 from courses_type.authentication import LocalJWTAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from core.permissions import IsInstructorOrAdmin
 from courses.models import Course
 from .serializers import CourseSerializer
@@ -17,7 +18,8 @@ class CourseViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'
 
     # Intégration de votre classe d'authentification simulée par en-têtes HTTP
-    authentication_classes = [LocalJWTAuthentication]
+    # ainsi que du JWT Bearer émis par le serveur (users)
+    authentication_classes = [JWTAuthentication, LocalJWTAuthentication]
 
     # Intégration de la permission adaptée à votre SimulatedUser
     permission_classes = [IsInstructorOrAdmin]

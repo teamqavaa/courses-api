@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Databases
+*.db
+*.sqlite3
+
+# Secrets
+.sso-jwt-secret
+
+# Django dev settings
+app/dev_settings.py
+
+# Environment files
+.env
+.env.local
+
+# Node
+node_modules/
+.next/

@@ -5,22 +5,24 @@ services:
       args:
         - DEV=true
     ports:
-      - "8080:8080"
+      - "8000:8000"
     volumes:
       - ./app:/app
+      - ./.sso-jwt-secret:/run/secrets/sso_jwt_secret:ro
     command: >
       sh -c "python manage.py wait_for_db &&
              python manage.py migrate &&
              python manage.py seed_course_type &&
              python manage.py seed_categories &&
              python manage.py seed_courses &&
-             python manage.py runserver 0.0.0.0:8080"
+             python manage.py seed_admin &&
+             python manage.py runserver 0.0.0.0:8000"
     environment:
       - DB_HOST=db
       - DB_NAME=ssodb
       - DB_USER=ssouser
       - DB_PASS=ssopassword
-      - DEBUG=False
+      - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
     env_file:
       - .env.local

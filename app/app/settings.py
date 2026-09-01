@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
 
     # My apps
+    'users',
     'core',
     'courses_type',
     'categories',
@@ -84,22 +85,44 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'app.wsgi.application'
 
+AUTH_USER_MODEL = 'users.User'
+
+AUTHENTICATION_BACKENDS = [
+    'users.backends.EmailOrPhoneBackend',
+]
+
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:3001',
 ]
 
+# courses-api issues the JWT. The shared signing value may come from the
+# SSO_JWT_SECRET environment variable or a mounted secret file (docker secrets
+# style); fall back to SECRET_KEY when neither is present so local dev still
+# works without extra configuration.
+def _sso_jwt_secret():
+    env = os.environ.get('SSO_JWT_SECRET')
+    if env:
+        return env
+    secret_file = '/run/secrets/sso_jwt_secret'
+    if os.path.exists(secret_file):
+        with open(secret_file) as fh:
+            return fh.read().strip()
+    return SECRET_KEY
+
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
-    'DEFAULT_PERMISSION_CLASSES': [],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'
 }
 
 
 # Configuration SimpleJWT
 SIMPLE_JWT = {
-    # Force l'App A à utiliser la même clé secrète que le SSO
-    'SIGNING_KEY': os.getenv('DJANGO_SECRET_KEY', 'django-insecure-bk^%uv3=da3gpf)wgxzyiius(o^w3$62t=a6!*@5%m$v&-iwf!'),
+    'SIGNING_KEY': _sso_jwt_secret(),
+    'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'sub',
 }

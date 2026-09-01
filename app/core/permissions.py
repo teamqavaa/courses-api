@@ -6,12 +6,16 @@ from rest_framework.permissions import BasePermission
 
 class IsInstructorOrAdmin(permissions.BasePermission):
     """
-    Permission personnalisée basée sur l'utilisateur simulé (SimulatedUser).
+    Permission personnalisée basée sur l'utilisateur simulé (SimulatedUser)
+    ou sur un vrai utilisateur `users.User` authentifié par JWT.
     - Tout le monde (même anonyme) peut voir les cours (GET).
     - Seuls les administrateurs ou les instructeurs peuvent créer des cours (POST).
     - Un instructeur ne peut modifier ou supprimer (PUT/PATCH/DELETE) que ses propres cours.
     - Un administrateur peut tout modifier ou supprimer.
     """
+
+    # Rôles autorisés pour l'écriture sur les vrais comptes users.User
+    ALLOWED_WRITE_ROLES = {'instructor', 'admin', 'staff'}
 
     def has_permission(self, request, view):
         # 1. Permettre la lecture (GET, HEAD, OPTIONS) à tout le monde
@@ -23,9 +27,14 @@ class IsInstructorOrAdmin(permissions.BasePermission):
         if not (request.user and request.user.is_authenticated):
             return False
 
-        # 3. L'utilisateur doit être soit admin, soit instructeur
-        # On utilise ici directement les propriétés de votre classe SimulatedUser !
-        return getattr(request.user, 'is_instructor', False) or getattr(request.user, 'is_admin', False)
+        # 3. L'utilisateur doit être soit admin, soit instructeur.
+        # On gère à la fois la classe SimulatedUser (propriétés is_instructor/is_admin)
+        # et le vrai modèle users.User (champ role / is_staff / is_superuser).
+        if getattr(request.user, 'is_instructor', False) or getattr(request.user, 'is_admin', False):
+            return True
+        if getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False):
+            return True
+        return getattr(request.user, 'role', None) in self.ALLOWED_WRITE_ROLES
 
     def has_object_permission(self, request, view, obj):
         """
@@ -37,6 +46,10 @@ class IsInstructorOrAdmin(permissions.BasePermission):
 
         # Un administrateur a tous les droits sur n'importe quel cours
         if getattr(request.user, 'is_admin', False):
+            return True
+        if getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False):
+            return True
+        if getattr(request.user, 'role', None) == 'admin':
             return True
 
         # Un instructeur ne peut modifier que ses propres cours.
