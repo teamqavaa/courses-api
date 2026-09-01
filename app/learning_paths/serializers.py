@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from courses.models import Course
+
 from .models import LearningPath, PathOutcome, PathPrerequisite
 
 
@@ -23,6 +25,15 @@ class LearningPathSerializer(serializers.ModelSerializer):
     # Computed count of attached published courses; not editable through the API.
     course_count = serializers.SerializerMethodField()
 
+    # Course slugs (matches the courses API `id` = slug convention) so the
+    # admin console and dashboards share one identity for a course.
+    courses = serializers.SlugRelatedField(
+        slug_field='slug',
+        many=True,
+        required=False,
+        queryset=Course.objects.all(),
+    )
+
     class Meta:
         model = LearningPath
         fields = [
@@ -37,6 +48,7 @@ class LearningPathSerializer(serializers.ModelSerializer):
             'includes_certificate',
             'order',
             'is_active',
+            'courses',
             'course_count',
             'created_at',
             'updated_at',

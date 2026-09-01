@@ -2,6 +2,7 @@ import requests
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 
 
 class SSOCallbackView(APIView):
@@ -48,3 +49,33 @@ class SSOCallbackView(APIView):
             'access': access_token,
             'user': user_info_resp.json(),
         })
+
+
+class ContentTypeListView(APIView):
+    """
+    GET /api/content-types/ - the Django content types that quizzes can link to.
+
+    The admin console populates its quiz "attach to" dropdown from here, so we
+    only expose course-related models.
+    """
+
+    CONTENT_MODELS = {
+        'courses': {'course'},
+        'modules': {'module'},
+        'lessons': {'lesson'},
+        'quizzes': {'quiz'},
+        'courses_type': {'typecourse'},
+        'quiz_types': {'typequiz'},
+        'question_types': {'typequestion'},
+    }
+
+    def get(self, request):
+        rows = []
+        for app_label, models in self.CONTENT_MODELS.items():
+            for model in models:
+                qs = ContentType.objects.filter(app_label=app_label, model=model)
+                rows.extend(
+                    {'id': ct.id, 'app_label': ct.app_label, 'model': ct.model}
+                    for ct in qs
+                )
+        return Response(rows)

@@ -25,6 +25,8 @@ from django.contrib import admin
 from django.urls import path
 from django.urls import include
 
+from core.views import ContentTypeListView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/schema', SpectacularAPIView.as_view(), name='api-schema'),
@@ -33,6 +35,7 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name='api-schema'),
         name='api-docs',
     ),
+    path('api/content-types/', ContentTypeListView.as_view(), name='content-types'),
     path('api/', include('courses_type.urls')),
     path('api/', include('categories.urls')),
     path('api/', include('tags.urls')),
