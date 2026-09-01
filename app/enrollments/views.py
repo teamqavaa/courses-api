@@ -16,8 +16,9 @@ class EnrollmentViewSet(mixins.ListModelMixin,
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Sécurité cruciale : l'utilisateur ne peut voir QUE ses propres inscriptions
+        # Sécurité cruciale : l'utilisateur ne peut voir QUE ses propres inscriptions.
+        # user_id stocke le `sub` SSO (CharField) ; on le normalise via str().
         return Enrollment.objects.filter(
-            user=self.request.user,
+            user_id=str(self.request.user.id),
             status='active'
         ).select_related('course') # Optimisation SQL pour joindre la table Course

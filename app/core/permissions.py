@@ -1,35 +1,30 @@
 import os
-from rest_framework import permissions
+
 import requests
-from rest_framework.permissions import BasePermission
+from rest_framework import permissions
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 
 
 class IsInstructorOrAdmin(permissions.BasePermission):
     """
-    Permission personnalisée basée sur l'utilisateur simulé (SimulatedUser)
-    ou sur un vrai utilisateur `users.User` authentifié par JWT.
+    Permission basée sur l'utilisateur simulé (SimulatedUser / ClaimUser).
     - Tout le monde (même anonyme) peut voir les cours (GET).
-    - Seuls les administrateurs ou les instructeurs peuvent créer des cours (POST).
-    - Un instructeur ne peut modifier ou supprimer (PUT/PATCH/DELETE) que ses propres cours.
-    - Un administrateur peut tout modifier ou supprimer.
+    - Seuls les administrateurs ou les instructeurs peuvent créer (POST) ou
+      modifier / supprimer (PUT/PATCH/DELETE).
+    - Un instructeur ne peut modifier ou supprimer que ses propres cours.
     """
 
-    # Rôles autorisés pour l'écriture sur les vrais comptes users.User
+    # Rôles autorisés pour l'écriture.
     ALLOWED_WRITE_ROLES = {'instructor', 'admin', 'staff'}
 
     def has_permission(self, request, view):
-        # 1. Permettre la lecture (GET, HEAD, OPTIONS) à tout le monde
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # 2. Pour toute modification/création (POST, PUT, PATCH, DELETE) :
-        # L'utilisateur doit être authentifié (X-User-Id présent dans les headers)
         if not (request.user and request.user.is_authenticated):
             return False
 
-        # 3. L'utilisateur doit être soit admin, soit instructeur.
-        # On gère à la fois la classe SimulatedUser (propriétés is_instructor/is_admin)
-        # et le vrai modèle users.User (champ role / is_staff / is_superuser).
         if getattr(request.user, 'is_instructor', False) or getattr(request.user, 'is_admin', False):
             return True
         if getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False):
@@ -37,14 +32,9 @@ class IsInstructorOrAdmin(permissions.BasePermission):
         return getattr(request.user, 'role', None) in self.ALLOWED_WRITE_ROLES
 
     def has_object_permission(self, request, view, obj):
-        """
-        Contrôle d'accès au niveau d'un cours précis (ex: PUT/PATCH/DELETE sur /api/courses/<id>/)
-        """
-        # La lecture est toujours autorisée
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # Un administrateur a tous les droits sur n'importe quel cours
         if getattr(request.user, 'is_admin', False):
             return True
         if getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False):
@@ -52,32 +42,32 @@ class IsInstructorOrAdmin(permissions.BasePermission):
         if getattr(request.user, 'role', None) == 'admin':
             return True
 
-        # Un instructeur ne peut modifier que ses propres cours.
-        # On compare l'ID de l'utilisateur connecté avec l'instructor_id enregistré sur le cours.
-        # (str() est utilisé par sécurité pour comparer proprement les chaînes d'UUID)
+        # Un instructeur ne peut modifier que ses propres cours
+        # (str() compare proprement les UUID, y compris contre un claim `sub`).
         return str(obj.instructor_id) == str(request.user.id)
 
 
-""""
-Validation de la permission des backends pour le SSO et le backends des cours.
-"""
-
-
-# core/permissions.py
-# core/permissions.py
-import os
-import requests
-from rest_framework.authentication import BaseAuthentication
-from rest_framework.exceptions import AuthenticationFailed
-
 class SimulatedUser:
-    """Objet utilisateur minimaliste pour satisfaire DRF."""
+    """Objet utilisateur minimaliste pour satisfaire DRF lors de l'introspection."""
+
     def __init__(self, user_data):
         self.id = user_data.get('sub') or user_data.get('user_id')
+        self.pk = self.id
+        self.email = user_data.get('email') or ''
+        self.roles = user_data.get('roles') or []
         self.is_authenticated = True
-        # Récupérez ces rôles depuis les claims du token ou de l'introspection si le SSO les renvoie
-        self.is_instructor = user_data.get('is_instructor', False)
-        self.is_admin = user_data.get('is_admin', False)
+        self.is_active = True
+        # Compat: explicit boolean claims (is_instructor / is_admin) take
+        # precedence; otherwise they are derived from the `roles` list.
+        self.is_instructor = user_data.get(
+            'is_instructor',
+            'admin' in self.roles or 'instructor' in self.roles,
+        )
+        self.is_admin = user_data.get(
+            'is_admin',
+            'admin' in self.roles,
+        )
+
 
 class SSOOAuth2Authentication(BaseAuthentication):
     def authenticate(self, request):
@@ -95,30 +85,18 @@ class SSOOAuth2Authentication(BaseAuthentication):
         client_secret = os.getenv("SSO_CLIENT_SECRET")
 
         try:
-            # Correction : Envoi des identifiants dans le payload POST
             payload = {
                 'token': token,
                 'client_id': client_id,
                 'client_secret': client_secret,
             }
 
-            response = requests.post(
-                introspect_url,
-                data=payload,
-                timeout=5
-            )
-
-            print("--- DEBUG SSO INTROSPECT ---")
-            print("Statut HTTP :", response.status_code)
-            print("Réponse brute :", response.text)
-            print("----------------------------")
+            response = requests.post(introspect_url, data=payload, timeout=5)
 
             if response.status_code == 200:
                 data = response.json()
                 if data.get('active'):
-                    # On instancie un objet utilisateur simulé exploitable par les permissions
-                    user = SimulatedUser(data)
-                    return (user, token)
+                    return (SimulatedUser(data), token)
 
         except Exception as e:
             print("Erreur d'introspection SSO:", e)

@@ -3,7 +3,7 @@ from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from courses_type.authentication import LocalJWTAuthentication
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from core.authentication import CustomJWTAuthentication
 from core.permissions import IsInstructorOrAdmin
 from .models import Tag
 from .serializers import TagSerializer
@@ -18,6 +18,6 @@ class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
 
-    authentication_classes = [JWTAuthentication, LocalJWTAuthentication]
+    authentication_classes = [CustomJWTAuthentication, LocalJWTAuthentication]
     permission_classes = [IsInstructorOrAdmin]
     parser_classes = [JSONParser, MultiPartParser, FormParser]

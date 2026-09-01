@@ -3,7 +3,7 @@ from rest_framework import viewsets
 from .models import TypeCourse
 from .serializers import TypeCourseSerializer
 from .authentication import LocalJWTAuthentication
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from core.authentication import CustomJWTAuthentication
 from rest_framework import permissions
 
 class TypeCourseViewSet(viewsets.ModelViewSet):
@@ -18,7 +18,7 @@ class TypeCourseViewSet(viewsets.ModelViewSet):
     serializer_class = TypeCourseSerializer
 
     # On applique notre authentification JWT locale + le JWT Bearer du serveur
-    authentication_classes = [JWTAuthentication, LocalJWTAuthentication]
+    authentication_classes = [CustomJWTAuthentication, LocalJWTAuthentication]
 
     def get_permissions(self):
         # Tout le monde peut lister et voir les détails

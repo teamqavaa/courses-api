@@ -27,7 +27,6 @@ from django.urls import include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('users.urls')),
     path('api/schema', SpectacularAPIView.as_view(), name='api-schema'),
     path(
         'api/docs/',
@@ -40,7 +39,6 @@ urlpatterns = [
     path('api/', include('courses.urls')),
     path('api/', include('carts.urls')),
     path('api/', include('discounts.urls')),
-    path('api/', include('discounts.urls')),
     path('api/', include('orders.urls')),
     path('api/payments/', include('payments.urls')),
     path('api/', include('modules.urls')),
@@ -50,7 +48,18 @@ urlpatterns = [
     path('api/', include('highlights.urls')),
     path('api/', include('learning_points.urls')),
     path('api/', include('resources.urls')),
-
+    path('api/', include('enrollments.urls')),
+    path('api/', include('requirements.urls')),
+    path('api/', include('learning_paths.urls')),
+    path('api/', include('progress.urls')),
+    path('api/', include('question_types.urls')),
+    path('api/', include('quiz_types.urls')),
+    path('api/', include('quizzes.urls')),
+    path('api/', include('quiz_questions.urls')),
+    path('api/', include('quiz_options.urls')),
+    path('api/', include('quiz_attempts.urls')),
+    path('api/', include('quiz_answers.urls')),
+    path('api/', include('quiz_results.urls')),
 ]
 
 if settings.DEBUG:

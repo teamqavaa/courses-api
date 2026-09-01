@@ -66,6 +66,24 @@ class CourseSerializer(serializers.ModelSerializer):
     thumbnail = HybridFileField(required=False, allow_null=True)
     promo_video_url = HybridFileField(required=False, allow_null=True)
 
+    # --- Dashboard shape (api_tables parity) ---
+    # These read-only extras mirror the names the frontend dashboard expects
+    # (see qi-sso-front/types/course.ts) without changing the existing API.
+    is_active = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+    instructor = serializers.SerializerMethodField()
+    duration_minutes = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+    original_price = serializers.SerializerMethodField()
+    audience = serializers.SerializerMethodField()
+    cohort_label = serializers.SerializerMethodField()
+    downloadable_files_count = serializers.SerializerMethodField()
+    highlights = serializers.SerializerMethodField()
+    outcomes = serializers.SerializerMethodField()
+    learning_points = serializers.SerializerMethodField()
+    requirements = serializers.SerializerMethodField()
+
     class Meta:
         model = Course
         fields = [
@@ -89,6 +107,21 @@ class CourseSerializer(serializers.ModelSerializer):
             'average_rating',
             'total_students',
             'total_reviews',
+            # Dashboard shape extras
+            'is_active',
+            'type',
+            'instructor',
+            'duration_minutes',
+            'rating',
+            'review_count',
+            'original_price',
+            'audience',
+            'cohort_label',
+            'downloadable_files_count',
+            'highlights',
+            'outcomes',
+            'learning_points',
+            'requirements',
             'created_at',
             'updated_at'
         ]
@@ -101,6 +134,70 @@ class CourseSerializer(serializers.ModelSerializer):
             'total_reviews',
             'created_at',
             'updated_at'
+        ]
+
+    def get_is_active(self, obj):
+        return obj.status == 'published'
+
+    def get_type(self, obj):
+        return obj.category.slug if obj.category_id else None
+
+    def get_instructor(self, obj):
+        return ''
+
+    def get_duration_minutes(self, obj):
+        total = 0
+        for module in obj.modules.all():
+            if not module.is_published:
+                continue
+            for lesson in module.lessons.all():
+                if lesson.is_published:
+                    total += lesson.duration_in_minutes
+        return total
+
+    def get_rating(self, obj):
+        return obj.average_rating if obj.average_rating > 0 else None
+
+    def get_review_count(self, obj):
+        return obj.total_reviews
+
+    def get_original_price(self, obj):
+        # A strike-through price only makes sense when a discount is applied.
+        if obj.discount_price and obj.discount_price > 0 and obj.discount_price < obj.price:
+            return f"{obj.price:.2f}"
+        return None
+
+    def get_audience(self, obj):
+        return ''
+
+    def get_cohort_label(self, obj):
+        return ''
+
+    def get_downloadable_files_count(self, obj):
+        return sum(1 for r in obj.resources.all() if r.is_published)
+
+    def get_highlights(self, obj):
+        return [
+            {'id': str(h.pk), 'course': str(obj.pk), 'order': h.order, 'content': h.title}
+            for h in obj.highlights.all() if h.is_published
+        ]
+
+    def get_outcomes(self, obj):
+        return [
+            {'id': str(o.pk), 'course': str(obj.pk), 'order': o.order, 'content': o.description}
+            for o in obj.outcomes.all() if o.is_published
+        ]
+
+    def get_learning_points(self, obj):
+        return [
+            {'id': str(lp.pk), 'course': str(obj.pk), 'order': lp.order, 'content': lp.title}
+            for lp in obj.learning_points.all() if lp.is_published
+        ]
+
+    def get_requirements(self, obj):
+        return [
+            {'id': str(r.pk), 'course': str(obj.pk), 'order': r.order, 'content': r.content}
+            for r in obj.requirements.all()
         ]
 
     def validate(self, data):
@@ -197,3 +294,40 @@ class CourseSerializer(serializers.ModelSerializer):
         self._handle_file_upload(validated_data, 'promo_video_url', 'videos')
 
         return super().update(instance, validated_data)
+
+
+class CourseListItemSerializer(CourseSerializer):
+    """
+    Slim, dashboard-shaped course payload used by the catalog + learning path
+    endpoints. `id` is the course *slug*: every dashboard URL (detail,
+    curriculum, path-context, progress) is keyed on the slug, so the frontend's
+    `summary.id` join with progress rows works regardless of the real PK type.
+    """
+
+    id = serializers.CharField(source='slug', read_only=True)
+
+    class Meta(CourseSerializer.Meta):
+        fields = [
+            'id',
+            'type',
+            'title',
+            'subtitle',
+            'description',
+            'language',
+            'level',
+            'slug',
+            'is_active',
+            'thumbnail',
+            'instructor',
+            'duration_minutes',
+            'rating',
+            'review_count',
+            'price',
+            'original_price',
+            'cohort_label',
+            'audience',
+            'downloadable_files_count',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields

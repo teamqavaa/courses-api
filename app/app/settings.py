@@ -4,6 +4,7 @@ Django settings for app project.
 
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +33,6 @@ INSTALLED_APPS = [
     'drf_spectacular',
 
     # My apps
-    'users',
     'core',
     'courses_type',
     'categories',
@@ -53,6 +53,18 @@ INSTALLED_APPS = [
     'resources',
     'payment_providers',
     'enrollments',
+    # Ported from the api_tables feature branch (courses-api / SSO split)
+    'requirements',
+    'learning_paths',
+    'progress',
+    'question_types',
+    'quiz_types',
+    'quizzes',
+    'quiz_questions',
+    'quiz_options',
+    'quiz_attempts',
+    'quiz_answers',
+    'quiz_results',
 ]
 
 MIDDLEWARE = [
@@ -85,43 +97,46 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'app.wsgi.application'
 
-AUTH_USER_MODEL = 'users.User'
-
-AUTHENTICATION_BACKENDS = [
-    'users.backends.EmailOrPhoneBackend',
-]
-
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:3001',
 ]
 
-# courses-api issues the JWT. The shared signing value may come from the
-# SSO_JWT_SECRET environment variable or a mounted secret file (docker secrets
-# style); fall back to SECRET_KEY when neither is present so local dev still
-# works without extra configuration.
-def _sso_jwt_secret():
-    env = os.environ.get('SSO_JWT_SECRET')
+# courses-api only *verifies* SSO-issued JWTs: the SSO backend signs with its
+# private key (RS256) and consumers verify with the matching public key. The
+# key may come from the SSO_JWT_PUBLIC_KEY env var, a mounted secret file
+# (docker secrets style: /run/secrets/sso_jwt_public), or the committed dev
+# public key (.sso-jwt-public.pem in the repository root).
+def _sso_jwt_public_key():
+    env = os.environ.get('SSO_JWT_PUBLIC_KEY')
     if env:
         return env
-    secret_file = '/run/secrets/sso_jwt_secret'
+    secret_file = '/run/secrets/sso_jwt_public'
     if os.path.exists(secret_file):
         with open(secret_file) as fh:
             return fh.read().strip()
-    return SECRET_KEY
+    key_path = BASE_DIR.parent / '.sso-jwt-public.pem'
+    if key_path.exists():
+        return key_path.read_text().strip()
+    raise ImproperlyConfigured(
+        'SSO_JWT_PUBLIC_KEY env var or a .sso-jwt-public.pem file is required '
+        'to verify SSO tokens (RS256).'
+    )
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'core.authentication.CustomJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'
 }
 
 
-# Configuration SimpleJWT
+# Configuration SimpleJWT (verification only: we never sign in this service)
 SIMPLE_JWT = {
-    'SIGNING_KEY': _sso_jwt_secret(),
+    'ALGORITHM': 'RS256',
+    'SIGNING_KEY': _sso_jwt_public_key(),
+    'VERIFYING_KEY': _sso_jwt_public_key(),
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'sub',
