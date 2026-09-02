@@ -14,6 +14,7 @@ services:
              python manage.py seed_course_type &&
              python manage.py seed_categories &&
              python manage.py seed_courses &&
+             python manage.py seed_providers &&
              python manage.py runserver 0.0.0.0:8080"
     environment:
       - DB_HOST=db

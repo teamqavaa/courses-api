@@ -49,7 +49,7 @@ class Payment(models.Model):
     )
     currency = models.CharField(
         max_length=3,
-        default='XOF',
+        default='USD',
         verbose_name="Currency Code",
         help_text="Code devise ISO 4217 (ex: XOF, EUR, USD)"
     )
