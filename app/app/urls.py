@@ -63,6 +63,7 @@ urlpatterns = [
     path('api/', include('quiz_attempts.urls')),
     path('api/', include('quiz_answers.urls')),
     path('api/', include('quiz_results.urls')),
+    path('api/', include('payment_providers.urls')),
 ]
 
 if settings.DEBUG:

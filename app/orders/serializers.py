@@ -1,4 +1,3 @@
-# app/orders/serializers.py
 from rest_framework import serializers
 from .models import Order
 from order_items.models import OrderItem
@@ -19,19 +18,21 @@ class OrderSerializer(serializers.ModelSerializer):
     """Serializer pour la lecture d'une commande complète avec ses items."""
     items = OrderItemSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    user_email = serializers.EmailField(source='user.email', read_only=True)
 
     class Meta:
         model = Order
         fields = [  # noqa: RUF012
             'id',
-            'user',
+            'user_id',
             'user_email',
+            'user_role',
             'status',
             'status_display',
             'total_amount',
+            'currency',
             'discount',
             'discount_amount',
+            'discount_code_snapshot',
             'items',
             'created_at',
             'updated_at',

@@ -1,4 +1,7 @@
 # app/payments/views.py
+import jwt
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,72 +17,87 @@ from .services import PaymentService
 
 
 class PaymentProviderViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    API en lecture seule pour récupérer la liste des prestataires de paiement actifs.
-    - GET /api/payments/providers/
-    """
     permission_classes = [permissions.AllowAny]
     serializer_class = PaymentProviderSerializer
     queryset = PaymentProvider.objects.filter(is_active=True)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    API pour consulter l'historique de ses paiements et initier un règlement.
-    - GET  /api/payments/      : Historique des paiements de l'utilisateur
-    - GET  /api/payments/{id}/ : Détail d'un paiement
-    - POST /api/payments/initiate/ : Inicie une session de paiement avec le provider
-    """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
     serializer_class = PaymentSerializer
 
+    def _get_user_info_from_request(self, request):
+        token = request.COOKIES.get("access_token")
+        if not token:
+            auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header.replace("Bearer ", "")
+
+        if not token:
+            return None, None, None
+
+        try:
+            payload = jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get("sub")
+            email = payload.get("email")
+            roles = payload.get("roles", [])
+
+            role = None
+            if isinstance(roles, list) and roles:
+                if "superadmin" in roles:
+                    role = "superadmin"
+                elif "admin" in roles:
+                    role = "admin"
+                else:
+                    role = roles[0]
+            elif isinstance(roles, str):
+                role = roles
+
+            return user_id, email, role
+        except jwt.PyJWTError:
+            return None, None, None
+
     def get_queryset(self):
-        """Un utilisateur ne peut voir QUE les paiements associés à ses propres commandes."""
-        user = self.request.user
-        if user.is_staff:
+        user_id, email, role = self._get_user_info_from_request(self.request)
+
+        if role in ["admin", "superadmin"]:
             return Payment.objects.all().select_related('order', 'provider')
-        return Payment.objects.filter(order__user=user).select_related('order', 'provider')
+
+        if user_id:
+            # Assurez-vous que votre modèle Order utilise user_id ou user selon votre architecture
+            return Payment.objects.filter(order__user_id=user_id).select_related('order', 'provider')
+
+        return Payment.objects.none()
 
     @action(detail=False, methods=['post'], url_path='initiate')
     def initiate(self, request):
-        """
-        Déclenche une tentative de paiement pour une commande donnée.
-        Payload attendu: { "order_id": "UUID", "provider_code": "WAVE|STRIPE|..." }
-        """
+        user_id, _, _ = self._get_user_info_from_request(request)
+
+        if not user_id:
+            return Response({"detail": "Utilisateur non authentifié ou token invalide."}, status=status.HTTP_401_UNAUTHORIZED)
+
         serializer = InitiatePaymentSerializer(
             data=request.data,
-            context={'request': request}
+            context={'request': request, 'user_id': user_id}
         )
         serializer.is_valid(raise_exception=True)
 
-        order_id = serializer.validated_data['order_id']
-        provider_code = serializer.validated_data['provider_code']
-
-        # Appel du service métier pour initialiser le paiement auprès de la passerelle
         payment = PaymentService.initiate_payment(
-            order_id=order_id,
-            provider_code=provider_code
+            order_id=serializer.validated_data['order_id'],
+            provider_code=serializer.validated_data['provider_code']
         )
 
-        response_serializer = self.get_serializer(payment)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
 
 
 class PaymentWebhookAPIView(APIView):
-    """
-    Endpoint recevant les notifications asynchrones (Webhooks) des prestataires (Stripe, Wave, OM).
-    - POST /api/payments/webhook/{provider_code}/
-    Avis : Cet endpoint est ouvert (AllowAny) car appelé par les serveurs externes des prestataires.
-    La sécurité est assurée par la vérification de la signature dans le PaymentService.
-    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, provider_code, *args, **kwargs):
-        provider_code_upper = provider_code.upper()
-
-        # Traitement du Webhook via le service métier
         success = PaymentService.process_webhook(
-            provider_code=provider_code_upper,
+            provider_code=provider_code.upper(),
             request=request
         )
 
