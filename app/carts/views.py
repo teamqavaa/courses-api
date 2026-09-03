@@ -62,8 +62,9 @@ class CartViewSet(viewsets.GenericViewSet):
     def add_item(self, request):
         """
         POST /api/carts/add-item/
-        Body: { "course_id": <int> }
-        Ajoute un cours au panier.
+        Body: { "course_id": <slug> }
+        Ajoute un cours au panier. Le cours est identifié par son slug
+        (cohérent avec le reste de l'API, ex. /api/my/progress/<slug>/).
         """
         course_id = request.data.get('course_id')
 
@@ -74,7 +75,7 @@ class CartViewSet(viewsets.GenericViewSet):
             )
 
         try:
-            course = Course.objects.get(id=course_id)
+            course = Course.objects.get(slug=course_id)
         except Course.DoesNotExist:
             return Response(
                 {"detail": "Ce cours n'existe pas."},
@@ -107,8 +108,8 @@ class CartViewSet(viewsets.GenericViewSet):
     def remove_item(self, request):
         """
         DELETE /api/carts/remove-item/
-        Body: { "course_id": <int> } ou query param ?course_id=<int>
-        Supprime un cours du panier.
+        Body: { "course_id": <slug> } ou query param ?course_id=<slug>
+        Supprime un cours du panier. Le cours est identifié par son slug.
         """
         course_id = request.data.get('course_id') or request.query_params.get('course_id')
 
@@ -121,7 +122,15 @@ class CartViewSet(viewsets.GenericViewSet):
         cart = self.get_cart(request)
 
         try:
-            cart_item = CartItem.objects.get(cart=cart, course_id=course_id)
+            course = Course.objects.get(slug=course_id)
+        except Course.DoesNotExist:
+            return Response(
+                {"detail": "Ce cours n'existe pas."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            cart_item = CartItem.objects.get(cart=cart, course=course)
             cart_item.delete()
             return Response(
                 {"detail": "Le cours a été retiré du panier."},

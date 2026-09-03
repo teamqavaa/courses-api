@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from courses.models import Course
 from courses.serializers import CourseListItemSerializer
+from enrollments.models import Enrollment
 from learning_paths.models import LearningPath
 from learning_paths.serializers import LearningPathSerializer
 
@@ -185,11 +186,17 @@ class StartCourseView(APIView):
 
     def post(self, request, course_id):
         course = get_object_or_404(Course, slug=course_id, status=PUBLISHED)
+
+        if not Enrollment.objects.filter(user_id=str(request.user.id), course=course, status='active').exists():
+            return Response(
+                {"detail": "You must purchase this course to enroll."},
+                status=http_status.HTTP_403_FORBIDDEN
+            )
+
         progress = CourseProgress.objects.filter(user_id=request.user.id, course=course).first()
         if progress is None:
             progress = CourseProgress.objects.create(user_id=request.user.id, course=course)
         elif progress.status == CourseProgress.Status.COMPLETED:
-            # Completed stays completed; only /uncomplete/ may reopen it.
             serializer = CourseProgressSerializer(progress)
             return Response(serializer.data)
         progress.status = CourseProgress.Status.IN_PROGRESS
