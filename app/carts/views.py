@@ -19,12 +19,20 @@ class CartViewSet(viewsets.GenericViewSet):
     permission_classes = []  # Désactive toute vérification de permission DRF sur ce ViewSet
     authentication_classes = []  # Désactive l'authentification DRF globale sur ce ViewSet
 
+    def _resolve_access_token(self, request):
+        """Extrait le token depuis l'en-tête Authorization (Bearer) ou le cookie access_token."""
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if auth_header.startswith('Bearer '):
+            return auth_header[len('Bearer '):].strip()
+
+        return request.COOKIES.get('access_token')
+
     def get_cart(self, request):
-        """Récupère ou crée le panier basé sur le 'sub' extrait du cookie access_token."""
-        access_token = request.COOKIES.get('access_token')
+        """Récupère ou crée le panier basé sur le 'sub' extrait du token access (Bearer ou cookie)."""
+        access_token = self._resolve_access_token(request)
 
         if not access_token:
-            raise AuthenticationFailed("Access token manquant dans les cookies.")
+            raise AuthenticationFailed("Access token manquant (Bearer ou cookie).")
 
         try:
             payload = jwt.decode(access_token, options={"verify_signature": False})

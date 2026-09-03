@@ -1,0 +1,1739 @@
+openapi: 3.0.3
+info:
+  title: Digital Readiness Lab API
+  version: 1.0.0
+  description: 'API for the Digital Readiness Lab learning platform: labs, practice
+    sessions, code execution, and user progress.'
+paths:
+  /api/admin/labs/:
+    get:
+      operationId: admin_labs_list
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. List or create labs.
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminLab'
+          description: ''
+    post:
+      operationId: admin_labs_create
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. List or create labs.
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminLab'
+          description: ''
+  /api/admin/labs/{lab_pk}/objectives/:
+    get:
+      operationId: admin_labs_objectives_list
+      description: List or create objectives for a lab.
+      parameters:
+      - in: path
+        name: lab_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LabObjectiveWrite'
+          description: ''
+    post:
+      operationId: admin_labs_objectives_create
+      description: List or create objectives for a lab.
+      parameters:
+      - in: path
+        name: lab_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LabObjectiveWrite'
+          description: ''
+  /api/admin/labs/{lab_pk}/objectives/{id}/:
+    get:
+      operationId: admin_labs_objectives_retrieve
+      description: Retrieve, update, or delete one objective of a lab.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: lab_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabObjectiveWrite'
+          description: ''
+    patch:
+      operationId: admin_labs_objectives_partial_update
+      description: Retrieve, update, or delete one objective of a lab.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: lab_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabObjectiveWrite'
+          description: ''
+    delete:
+      operationId: admin_labs_objectives_destroy
+      description: Retrieve, update, or delete one objective of a lab.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: lab_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabObjectiveWrite'
+          description: ''
+  /api/admin/labs/{id}/:
+    get:
+      operationId: admin_labs_retrieve
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. Retrieve, update, or delete one lab.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminLab'
+          description: ''
+    patch:
+      operationId: admin_labs_partial_update
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. Retrieve, update, or delete one lab.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminLab'
+          description: ''
+    delete:
+      operationId: admin_labs_destroy
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. Retrieve, update, or delete one lab.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminLab'
+          description: ''
+  /api/admin/skills/:
+    get:
+      operationId: admin_skills_list
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. List or create skills.
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkillWrite'
+          description: ''
+    post:
+      operationId: admin_skills_create
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. List or create skills.
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkillWrite'
+          description: ''
+  /api/admin/skills/{id}/:
+    get:
+      operationId: admin_skills_retrieve
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. Retrieve, update, or delete one skill.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillWrite'
+          description: ''
+    patch:
+      operationId: admin_skills_partial_update
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. Retrieve, update, or delete one skill.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillWrite'
+          description: ''
+    delete:
+      operationId: admin_skills_destroy
+      description: Staff-only admin CRUD. Requires an authenticated staff account;
+        non-staff tokens receive 403. Retrieve, update, or delete one skill.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillWrite'
+          description: ''
+  /api/admin/users/:
+    get:
+      operationId: admin_users_list
+      description: Staff-only list of users with optional ?role=<value> filter, or
+        create a single user.
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserList'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdmin'
+          description: ''
+    post:
+      operationId: admin_users_create
+      description: Staff-only list of users with optional ?role=<value> filter, or
+        create a single user.
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserAdminCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserAdminCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserAdminCreateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserList'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdmin'
+          description: ''
+  /api/admin/users/{id}/:
+    get:
+      operationId: admin_users_retrieve
+      description: Staff-only retrieve or update one user's profile and permissions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdmin'
+          description: ''
+    patch:
+      operationId: admin_users_partial_update
+      description: Staff-only retrieve or update one user's profile and permissions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdmin'
+          description: ''
+  /api/admin/users/bulk/:
+    post:
+      operationId: admin_users_bulk_create
+      description: 'Bulk create or upsert users from parsed CSV rows. All-or-nothing:
+        one invalid row aborts the whole request. Upsert matches on email, else phone;
+        a blank password leaves the existing password untouched.'
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserBulkRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserBulkRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserBulkRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBulkResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBulkResult'
+          description: ''
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: Authenticate a user by email or phone and password. Returns JWT
+        access and refresh tokens.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+            examples:
+              LoginExample:
+                value:
+                  username: student@example.com
+                  password: hunter2
+                summary: Login example
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
+        '401':
+          description: No response body
+  /api/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/execute/:
+    post:
+      operationId: execute_create
+      description: Execute user code in an isolated Piston sandbox. Rate limited to
+        10 runs per minute per user.
+      tags:
+      - execute
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequestRequest'
+            examples:
+              ExecuteExample:
+                value:
+                  language: python
+                  version: 3.10.0
+                  filename: main.py
+                  code: print('Hello, world!')
+                summary: Execute example
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+          description: ''
+        '400':
+          description: No response body
+        '429':
+          description: No response body
+        '502':
+          description: No response body
+        '504':
+          description: No response body
+  /api/labs/:
+    get:
+      operationId: labs_list
+      description: List all published labs. Public endpoint. Optional ?skill=<slug>
+        filter.
+      tags:
+      - labs
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lab'
+          description: ''
+  /api/labs/{lab_id}/:
+    get:
+      operationId: labs_retrieve
+      description: Return a single published lab by ID. Public endpoint.
+      parameters:
+      - in: path
+        name: lab_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - labs
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+          description: ''
+  /api/progress/:
+    get:
+      operationId: progress_list
+      description: List the authenticated user's progress across all labs.
+      tags:
+      - progress
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Progress'
+          description: ''
+  /api/progress/{lab_id}/:
+    get:
+      operationId: progress_retrieve
+      description: Return the authenticated user's progress for a single lab.
+      parameters:
+      - in: path
+        name: lab_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - progress
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Progress'
+          description: ''
+  /api/sessions/{lab_id}/:
+    get:
+      operationId: sessions_retrieve
+      description: Fetch the user's session for a lab. Returns status 'not_started'
+        if none exists.
+      parameters:
+      - in: path
+        name: lab_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - sessions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionGetResponse'
+          description: ''
+    post:
+      operationId: sessions_create
+      description: Create or update the user's session for a lab and save the current
+        code.
+      parameters:
+      - in: path
+        name: lab_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionSaveRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SessionSaveRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SessionSaveRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionSaveResponse'
+          description: ''
+  /api/sessions/{lab_id}/complete/:
+    post:
+      operationId: sessions_complete_create
+      description: Mark the user's session for a lab as completed.
+      parameters:
+      - in: path
+        name: lab_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - sessions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ok'
+          description: ''
+        '403':
+          description: No response body
+        '404':
+          description: No response body
+  /api/sessions/{lab_id}/heartbeat/:
+    post:
+      operationId: sessions_heartbeat_create
+      description: Refresh the last_active_at timestamp of the user's session for
+        a lab.
+      parameters:
+      - in: path
+        name: lab_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - sessions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ok'
+          description: ''
+        '404':
+          description: No response body
+  /api/sessions/{lab_id}/reset/:
+    post:
+      operationId: sessions_reset_create
+      description: Clear the user's session code and completion state for a lab (restart).
+      parameters:
+      - in: path
+        name: lab_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - sessions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ok'
+          description: ''
+  /api/sessions/{lab_id}/uncomplete/:
+    post:
+      operationId: sessions_uncomplete_create
+      description: Revert a completed session to active (undo completion).
+      parameters:
+      - in: path
+        name: lab_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - sessions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ok'
+          description: ''
+        '404':
+          description: No response body
+  /api/skills/:
+    get:
+      operationId: skills_list
+      description: List all active skills. Public endpoint.
+      tags:
+      - skills
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Skill'
+          description: ''
+  /api/skills/{slug}/labs/:
+    get:
+      operationId: skills_labs_list
+      description: List published labs for one active skill. Public endpoint.
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - skills
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lab'
+          description: ''
+  /api/stats/:
+    get:
+      operationId: stats_retrieve
+      description: 'Aggregate stats for the authenticated user: labs completed, hours
+        practiced, current day streak, and this week''s activity.'
+      tags:
+      - stats
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stats'
+          description: ''
+  /api/users/:
+    post:
+      operationId: users_create
+      description: Register a new user. At least one of email or phone is required.
+        Returns JWT access and refresh tokens.
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+            examples:
+              RegisterExample:
+                value:
+                  name: Ada Lovelace
+                  email: ada@example.com
+                  phone: '+1234567890'
+                  password: hunter2
+                summary: Register example
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
+        '400':
+          description: No response body
+  /api/users/me/:
+    get:
+      operationId: users_me_retrieve
+      description: Get the authenticated user's profile.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: users_me_partial_update
+      description: Partially update the authenticated user's profile.
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+        '400':
+          description: No response body
+components:
+  schemas:
+    AdminLab:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        language:
+          $ref: '#/components/schemas/LanguageEnum'
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        difficulty:
+          $ref: '#/components/schemas/DifficultyEnum'
+        skill:
+          type: string
+          format: uuid
+          nullable: true
+        skill_slug:
+          type: string
+          readOnly: true
+          default: ''
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        starter_code:
+          type: string
+        objectives:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabObjective'
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - objectives
+      - skill_slug
+      - title
+    DifficultyEnum:
+      enum:
+      - guided
+      - intermediate
+      - advanced
+      type: string
+      description: |-
+        * `guided` - Guided
+        * `intermediate` - Intermediate
+        * `advanced` - Advanced
+    ExecuteRequestRequest:
+      type: object
+      properties:
+        language:
+          type: string
+          minLength: 1
+          description: Language to run, e.g. 'python'.
+        version:
+          type: string
+          minLength: 1
+          description: Language version, e.g. '3.10.0'.
+        filename:
+          type: string
+          minLength: 1
+          description: Source filename, e.g. 'main.py'.
+        code:
+          type: string
+          minLength: 1
+          description: Source code to execute.
+      required:
+      - code
+      - filename
+      - language
+      - version
+    ExecuteResponse:
+      type: object
+      properties:
+        stdout:
+          type: string
+        stderr:
+          type: string
+        output:
+          type: string
+        exit_code:
+          type: integer
+        code:
+          type: string
+        signal:
+          type: string
+          nullable: true
+        language:
+          type: string
+        version:
+          type: string
+        run_time:
+          type: number
+          format: double
+        memory:
+          type: number
+          format: double
+    Lab:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+          nullable: true
+        language:
+          allOf:
+          - $ref: '#/components/schemas/LanguageEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        difficulty:
+          allOf:
+          - $ref: '#/components/schemas/DifficultyEnum'
+          readOnly: true
+        skill:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        skill_slug:
+          type: string
+          readOnly: true
+          default: ''
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        starter_code:
+          type: string
+          readOnly: true
+        objectives:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabObjective'
+          readOnly: true
+      required:
+      - created_at
+      - description
+      - difficulty
+      - id
+      - language
+      - objectives
+      - skill
+      - skill_slug
+      - starter_code
+      - status
+      - title
+    LabObjective:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        order:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        content:
+          type: string
+          readOnly: true
+        hint:
+          type: string
+          readOnly: true
+          nullable: true
+        starter_code:
+          type: string
+          readOnly: true
+      required:
+      - content
+      - hint
+      - id
+      - order
+      - starter_code
+      - title
+    LabObjectiveWrite:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        lab:
+          type: string
+          format: uuid
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+        hint:
+          type: string
+          nullable: true
+        starter_code:
+          type: string
+      required:
+      - content
+      - id
+      - lab
+      - title
+    LanguageEnum:
+      enum:
+      - python
+      - php
+      - typescript
+      type: string
+      description: |-
+        * `python` - Python
+        * `php` - Php
+        * `typescript` - Typescript
+    LoginRequestRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Email or phone number.
+        password:
+          type: string
+          minLength: 1
+      required:
+      - password
+      - username
+    ModeEnum:
+      enum:
+      - create
+      - upsert
+      type: string
+      description: |-
+        * `create` - create
+        * `upsert` - upsert
+    Ok:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+      - ok
+    PatchedUserProfileRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        display_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        bio:
+          type: string
+          nullable: true
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        language:
+          type: string
+          minLength: 1
+          maxLength: 10
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_staff:
+          type: boolean
+    Progress:
+      type: object
+      properties:
+        lab_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          description: 'One of: not_started, in_progress, completed.'
+        attempts:
+          type: integer
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_steps:
+          type: integer
+        total_steps:
+          type: integer
+        progress_percent:
+          type: integer
+      required:
+      - attempts
+      - completed_steps
+      - lab_id
+      - progress_percent
+      - status
+      - total_steps
+    RoleEnum:
+      enum:
+      - student
+      - instructor
+      - admin
+      - parent
+      type: string
+      description: |-
+        * `student` - Student
+        * `instructor` - Instructor
+        * `admin` - Admin
+        * `parent` - Parent
+    SessionGetResponse:
+      type: object
+      properties:
+        current_code:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: 'One of: active, completed, expired, not_started.'
+        last_active_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - status
+    SessionSaveRequestRequest:
+      type: object
+      properties:
+        current_code:
+          type: string
+          description: Current code in the editor.
+    SessionSaveResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        last_active_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - last_active_at
+      - status
+    Skill:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          readOnly: true
+          nullable: true
+        icon:
+          type: string
+          readOnly: true
+        order:
+          type: integer
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+      required:
+      - description
+      - icon
+      - id
+      - is_active
+      - order
+      - slug
+      - title
+    SkillWrite:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 255
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          maxLength: 50
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_active:
+          type: boolean
+      required:
+      - id
+      - slug
+      - title
+    Stats:
+      type: object
+      properties:
+        labs_completed:
+          type: integer
+        hours_practiced:
+          type: number
+          format: double
+        current_streak:
+          type: integer
+        week:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeekDay'
+      required:
+      - current_streak
+      - hours_practiced
+      - labs_completed
+      - week
+    StatusEnum:
+      enum:
+      - draft
+      - published
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    Tokens:
+      type: object
+      properties:
+        access:
+          type: string
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    UserAdmin:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        display_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        bio:
+          type: string
+          nullable: true
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        language:
+          type: string
+          maxLength: 10
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        is_active:
+          type: boolean
+        is_staff:
+          type: boolean
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - id
+    UserAdminCreateRequest:
+      type: object
+      description: Single-user creation by a staff member. Mirrors the bulk row rules.
+      properties:
+        full_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        display_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          default: student
+        is_active:
+          type: boolean
+          default: true
+        is_staff:
+          type: boolean
+          default: false
+        language:
+          type: string
+          minLength: 1
+          default: en
+          maxLength: 10
+        password:
+          type: string
+          writeOnly: true
+    UserBulkRequestRequest:
+      type: object
+      properties:
+        mode:
+          allOf:
+          - $ref: '#/components/schemas/ModeEnum'
+          default: create
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserBulkRowRequest'
+      required:
+      - rows
+    UserBulkResult:
+      type: object
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - created
+      - errors
+      - updated
+    UserBulkRowRequest:
+      type: object
+      description: One parsed CSV row of a bulk user import. Blank cells arrive as
+        None.
+      properties:
+        full_name:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 255
+        display_name:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          nullable: true
+          minLength: 1
+        phone:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 20
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+        is_staff:
+          type: boolean
+        language:
+          type: string
+          maxLength: 10
+        password:
+          type: string
+    UserList:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        display_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_active:
+          type: boolean
+        is_staff:
+          type: boolean
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - id
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          nullable: true
+          maxLength: 255
+        display_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        avatar:
+          type: string
+          nullable: true
+          readOnly: true
+        bio:
+          type: string
+          nullable: true
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        language:
+          type: string
+          maxLength: 10
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        is_staff:
+          type: boolean
+      required:
+      - avatar
+      - id
+    UserRegistrationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+      required:
+      - password
+    WeekDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        practiced:
+          type: boolean
+        is_today:
+          type: boolean
+      required:
+      - date
+      - is_today
+      - practiced
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
