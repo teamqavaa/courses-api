@@ -47,7 +47,7 @@ class CartItem(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.course.title} (Panier: {self.cart.user_id.email})"
+        return f"{self.course.title} (Panier: {self.cart.user_id})"
 
     @property
     def price(self):

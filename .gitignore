@@ -13,3 +13,9 @@ __pycache__/
 *-server.log
 dev.log
 nul
+
+# Local secrets and dev databases
+.sso-jwt-secret
+app/dev.db
+app/test.db
+app/dev_settings.py
