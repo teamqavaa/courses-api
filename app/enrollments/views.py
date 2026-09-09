@@ -1,23 +1,27 @@
-# app/enrollments/views.py
-from rest_framework import viewsets, mixins
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets, mixins, status
+from rest_framework.response import Response
+from rest_framework.exceptions import AuthenticationFailed
 from .models import Enrollment
 from .serializers import EnrollmentSerializer
+from core.utils import get_user_sub_from_request
 
 class EnrollmentViewSet(mixins.ListModelMixin,
                         mixins.RetrieveModelMixin,
                         viewsets.GenericViewSet):
     """
-    ViewSet permettant à l'étudiant connecté de l'API de :
-    - Lister ses inscriptions actives (GET /api/enrollments/)
-    - Voir le détail d'une inscription spécifique (GET /api/enrollments/{id}/)
+    ViewSet pour les inscriptions basé sur le SSO cookie.
     """
     serializer_class = EnrollmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
+    authentication_classes = []
 
     def get_queryset(self):
-        # Sécurité cruciale : l'utilisateur ne peut voir QUE ses propres inscriptions
+        try:
+            user_sub = get_user_sub_from_request(self.request)
+        except AuthenticationFailed:
+            return Enrollment.objects.none()
+
         return Enrollment.objects.filter(
-            user=self.request.user,
+            user_id=user_sub,
             status='active'
-        ).select_related('course') # Optimisation SQL pour joindre la table Course
+        ).select_related('course')

@@ -24,12 +24,12 @@ class Enrollment(models.Model):
         verbose_name="Cours"
     )
 
-    order = models.OneToOneField(
+    order = models.ForeignKey(
         'orders.Order',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='triggered_enrollment',
+        related_name='enrollments', # Changé de 'triggered_enrollment' à 'enrollments' (au pluriel)
         verbose_name="Commande d'origine"
     )
 

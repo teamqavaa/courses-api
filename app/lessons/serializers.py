@@ -1,30 +1,18 @@
-# app/lessons/serializers.py
 from rest_framework import serializers
-from .models import Lesson
-
-
-class LessonVideoSummarySerializer(serializers.Serializer):
-    """
-    Serializer léger en lecture seule pour exposer les données clés
-    de la vidéo rattachée à la leçon.
-    """
-    id = serializers.UUIDField(read_only=True)
-    title = serializers.CharField(read_only=True)
-    video_url = serializers.URLField(read_only=True)
-    duration = serializers.IntegerField(read_only=True)
-    provider = serializers.CharField(read_only=True)
+from lessons.models import Lesson
+from videos.serializers import VideoReadPublicSerializer
 
 
 class LessonDetailSerializer(serializers.ModelSerializer):
     """
     Serializer pour la LECTURE (GET).
-    Renvoie les métadonnées de la leçon ainsi que la vidéo rattachée.
+    Renvoie les métadonnées de la leçon ainsi que l'objet vidéo rattaché.
     """
-    video = LessonVideoSummarySerializer(read_only=True)
+    video = VideoReadPublicSerializer(read_only=True)
 
     class Meta:
         model = Lesson
-        fields = [  # noqa: RUF012
+        fields = [
             'id',
             'module',
             'title',
@@ -49,7 +37,7 @@ class LessonCreateUpdateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Lesson
-        fields = [  # noqa: RUF012
+        fields = [
             'id',
             'module',
             'title',
@@ -61,7 +49,7 @@ class LessonCreateUpdateSerializer(serializers.ModelSerializer):
             'is_preview',
             'is_published',
         ]
-        read_only_fields = ['id']  # noqa: RUF012
+        read_only_fields = ['id']
 
     def validate(self, attrs):
         """
@@ -70,8 +58,13 @@ class LessonCreateUpdateSerializer(serializers.ModelSerializer):
         module = attrs.get('module')
         order = attrs.get('order')
 
-        if not self.instance and module and order:
-            if Lesson.objects.filter(module=module, order=order).exists():
+        # Lors de la création (pas d'instance) ou si l'ordre change en modification
+        if module and order:
+            queryset = Lesson.objects.filter(module=module, order=order)
+            if self.instance:
+                queryset = queryset.exclude(pk=self.instance.pk)
+
+            if queryset.exists():
                 raise serializers.ValidationError({
                     "order": f"Une leçon avec l'ordre {order} existe déjà dans ce module."
                 })

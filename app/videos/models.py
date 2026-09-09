@@ -57,11 +57,6 @@ class Video(models.Model):
         null=True,
         verbose_name="URL de la miniature (Thumbnail)"
     )
-    duration_in_seconds = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Durée (en secondes)",
-        help_text="Durée exacte de la vidéo"
-    )
 
     # --- Traçabilité ---
     created_at = models.DateTimeField(

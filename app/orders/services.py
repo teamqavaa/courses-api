@@ -20,7 +20,6 @@ class CheckoutService:
         3. Crée l'Order en statut PENDING.
         4. Crée les OrderItem en figant les prix payés (Snapshot).
         5. Incrémente l'utilisation du coupon si présent.
-        6. Vide le panier (supprime les CartItem).
         """
         cart_items = list(cart.items.select_related('course').all())
 
@@ -83,9 +82,5 @@ class CheckoutService:
         if valid_discount:
             valid_discount.used_count += 1
             valid_discount.save(update_fields=['used_count'])
-
-        cart.items.all().delete()
-        cart.discount = None
-        cart.save(update_fields=['discount'])
 
         return order

@@ -37,8 +37,18 @@ class Course(models.Model):
         on_delete=models.PROTECT
     )
 
-    instructor_id = models.UUIDField(
-        verbose_name="Instructor UUID"
+    # Informations du créateur récupérées depuis le SSO (comme pour le Cart)
+    user_id = models.CharField(
+        max_length=255,
+        db_index=True,
+        verbose_name="ID Utilisateur (sub)"
+    )
+    user_email = models.EmailField(
+        verbose_name="Email Utilisateur"
+    )
+    user_roles = models.JSONField(
+        default=list,
+        verbose_name="Rôles Utilisateur"
     )
 
     title = models.CharField(max_length=255)
@@ -52,18 +62,14 @@ class Course(models.Model):
 
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
-    # CORRECTION : Utilisation de Decimal("0.00") au lieu de 0.00 (float)
     discount_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=Decimal("0.00")
     )
 
-    # Recensement ajouté
-
     tags = models.ManyToManyField(Tag, related_name='courses', blank=True)
 
-    # --- CHAMPS HYBRIDES TEXTE / FICHIERS ---
     thumbnail = models.CharField(
         max_length=500,
         blank=True,
@@ -77,7 +83,6 @@ class Course(models.Model):
         null=True,
         help_text="External URL (YouTube, Vimeo, Cloudinary) or local path to video."
     )
-    # ----------------------------------------
 
     average_rating = models.FloatField(default=0.0)
     total_students = models.IntegerField(default=0)
@@ -88,9 +93,10 @@ class Course(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Cours"
+        verbose_name_plural = "Cours"
 
     def save(self, *args, **kwargs):
-        # Génère automatiquement un slug unique basé sur le titre s'il n'est pas fourni
         if not self.slug:
             self.slug = slugify(self.title)
         super().save(*args, **kwargs)

@@ -1,34 +1,49 @@
-# app/courses/views.py
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.exceptions import AuthenticationFailed
 
-# Imports de vos modules d'authentification et de permissions locaux
-from courses_type.authentication import LocalJWTAuthentication
-from core.permissions import IsInstructorOrAdmin
 from courses.models import Course
+from enrollments.models import Enrollment
 from .serializers import CourseSerializer
-
+from core.utils import get_user_sub_from_request # Votre utilitaire
 
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-
-    # Utilise le champ 'slug' au lieu de la clé primaire (id/pk) pour les URLs de détail
     lookup_field = 'slug'
-
-    # Intégration de votre classe d'authentification simulée par en-têtes HTTP
-    authentication_classes = [LocalJWTAuthentication]
-
-    # Intégration de la permission adaptée à votre SimulatedUser
-    permission_classes = [IsInstructorOrAdmin]
-
-    # Support des fichiers (upload) et du JSON classique
+    authentication_classes = []  # Désactivé pour uniformiser avec le Panier
+    permission_classes = []      # Désactivé (géré manuellement ou par action si besoin)
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+
     def get_queryset(self):
+        return Course.objects.all().select_related('category').prefetch_related(
+            'tags',
+            'highlights',
+            'learning_points',
+            'outcomes',
+            'modules__lessons__video',
+            'modules__lessons__resources',
+            'modules__resources',
+            'resources'
+        )
+
+
+    @action(detail=False, methods=['get'], url_path='my-enrollments')
+    def my_enrollments(self, request):
         """
-        Optimisation de la requête (Eager Loading) :
-        - select_related('category') pour la relation One-to-Many (clé étrangère simple)
-        - prefetch_related('tags') pour la relation Many-to-Many (évite le problème N+1 queries)
+        GET /api/courses/my-enrollments/
         """
-        return Course.objects.all().select_related('category').prefetch_related('tags')
+        try:
+            current_user_id = get_user_sub_from_request(request)
+        except AuthenticationFailed as e:
+            return Response({"detail": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Récupère les IDs des cours liés aux inscriptions de l'utilisateur
+        enrolled_course_ids = Enrollment.objects.filter(user_id=current_user_id).values_list('course_id', flat=True)
+        courses = self.get_queryset().filter(id__in=enrolled_course_ids)
+
+        serializer = self.get_serializer(courses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

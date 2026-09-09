@@ -1,10 +1,11 @@
 from rest_framework import serializers
-from .models import Module
+from modules.models import Module
+from lessons.serializers import LessonDetailSerializer  # 🔑 Importez le serializer des leçons
 
 
 class ModuleDetailSerializer(serializers.ModelSerializer):
     """
-    Serializer léger retournant uniquement les métadonnées propres au Module.
+    Serializer léger retournant les métadonnées et la liste des leçons associées.
     Utilisé pour la LECTURE (GET).
     """
     lessons_count = serializers.IntegerField(
@@ -12,6 +13,9 @@ class ModuleDetailSerializer(serializers.ModelSerializer):
         read_only=True,
         help_text="Nombre total de leçons dans ce module"
     )
+
+    # 🔑 Ajout de la relation inverse pour imbriquer les leçons du module
+    lessons = LessonDetailSerializer(many=True, read_only=True)
 
     class Meta:
         model = Module
@@ -25,6 +29,7 @@ class ModuleDetailSerializer(serializers.ModelSerializer):
             'is_published',
             'is_free',
             'lessons_count',
+            'lessons',  # 🔑 Inclure le champ ici
             'created_at',
             'updated_at',
         ]
@@ -41,6 +46,7 @@ class ModuleCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [  # noqa: RUF012
             'id',
             'course',
+            'resources',
             'title',
             'slug',
             'description',
@@ -49,3 +55,4 @@ class ModuleCreateUpdateSerializer(serializers.ModelSerializer):
             'is_free',
         ]
         read_only_fields = ['id']  # noqa: RUF012
+

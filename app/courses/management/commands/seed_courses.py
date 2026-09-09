@@ -1,4 +1,3 @@
-# app/courses/management/commands/seed_courses.py
 import uuid
 from decimal import Decimal
 from django.core.management.base import BaseCommand
@@ -6,22 +5,34 @@ from django.utils.text import slugify
 from courses.models import Course
 from categories.models import Category
 from tags.models import Tag
+from highlights.models import CourseHighlight
+from learning_points.models import CourseLearningPoint
+from modules.models import Module
+from lessons.models import Lesson
+from resources.models import Resource
+from videos.models import Video
 
 
 class Command(BaseCommand):
-    help = "Peuple la base de données avec des catégories, des tags et des cours de test."
+    help = "Populates the database with categories, tags, 4 English courses, and YouTube video links."
 
     def handle(self, *args, **options):
-        self.stdout.write("Début du peuplement de la base de données...")
+        self.stdout.write("Starting complete database seeding...")
 
-        # 1. Nettoyage complet des anciennes données
-        self.stdout.write("Nettoyage de la base de données existante...")
+        # 1. Complete cleanup in reverse order of dependencies
+        self.stdout.write("Cleaning up existing database...")
+        Video.objects.all().delete()
+        Resource.objects.all().delete()
+        Lesson.objects.all().delete()
+        Module.objects.all().delete()
+        CourseLearningPoint.objects.all().delete()
+        CourseHighlight.objects.all().delete()
         Course.objects.all().delete()
         Category.objects.all().delete()
         Tag.objects.all().delete()
 
-        # 2. Création des tags de test
-        self.stdout.write("Création des tags...")
+        # 2. Creation of tags
+        self.stdout.write("Creating tags...")
         tags_list = [
             "Python", "Django", "React", "Frontend", "Backend",
             "Docker", "DevOps", "Kubernetes", "Figma", "UI/UX",
@@ -36,11 +47,11 @@ class Command(BaseCommand):
             )
             tags_dict[tag_name] = tag
 
-        # 3. Création des catégories de test
+        # 3. Creation of categories
         categories_data = [
-            {"name": "Développement Web", "description": "Apprenez à coder des sites et applications modernes."},
-            {"name": "Design & UI/UX", "description": "Maîtrisez les outils de design et l'expérience utilisateur."},
-            {"name": "Business & Marketing", "description": "Lancez votre activité et trouvez vos premiers clients."},
+            {"name": "Web Development", "description": "Learn to code modern websites and applications."},
+            {"name": "Design & UI/UX", "description": "Master design tools and user experience principles."},
+            {"name": "Business & Marketing", "description": "Launch your business and acquire your first customers."},
         ]
 
         categories_dict = {}
@@ -53,89 +64,204 @@ class Command(BaseCommand):
                 }
             )
             categories_dict[cat["name"]] = category
-            if created:
-                self.stdout.write(f"Catégorie créée : '{category.name}'")
 
-        # ID instructeur simulé
         instructor_id = str(uuid.uuid4())
+        instructor_email = "expert.instructor@example.com"
+        instructor_roles = ["instructor", "admin"]
 
-        # 4. Liste de cours réalistes à insérer (avec la correction "french" en minuscules)
+        # Vos liens YouTube à distribuer sur les leçons
+        youtube_links = [
+            "https://www.youtube.com/watch?v=D1B_BkGHbqs",
+            "https://www.youtube.com/watch?v=zu_lcO7Yueo",
+            "https://www.youtube.com/watch?v=2TlIg3VokY8",
+        ]
+        video_counter = 0
+
+        # 4. List of 4 rich courses to insert
         courses_data = [
             {
-                "category": categories_dict["Développement Web"],
-                "title": "Devenir Développeur Full-Stack avec React & Django",
-                "subtitle": "La formation ultime pour maîtriser le frontend et le backend de A à Z.",
-                "description": "Dans ce cours complet, vous allez apprendre à concevoir une API robuste avec Django REST Framework et à l'interfacer avec une interface dynamique en React. Idéal pour les profils juniors.",
-                "language": "french",  # <--- CORRIGÉ : "French" -> "french"
+                "category": categories_dict["Web Development"],
+                "title": "Become a Full-Stack Developer with React & Django",
+                "subtitle": "The ultimate masterclass to conquer frontend and backend development from scratch.",
+                "description": "In this comprehensive course, you will learn how to design a robust API using Django REST Framework and interface it with a dynamic React interface.",
+                "language": "english",
                 "level": "intermediate",
                 "status": "published",
                 "price": Decimal("199.99"),
                 "discount_price": Decimal("99.99"),
                 "thumbnail": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97",
-                "promo_video_url": "https://www.w3schools.com/html/mov_bbb.mp4",
+                "promo_video_url": "https://www.youtube.com/watch?v=D1B_BkGHbqs",
                 "average_rating": Decimal("4.8"),
                 "total_students": 1420,
                 "total_reviews": 312,
-                "tags_to_add": ["Python", "Django", "React", "Frontend", "Backend"]
+                "tags_to_add": ["Python", "Django", "React", "Frontend", "Backend"],
+                "highlights": [
+                    "Over 40 hours of hands-on video tutorials",
+                    "Production-ready real-world projects",
+                    "Direct support from the instructor"
+                ],
+                "learning_points": [
+                    "Master Django REST Framework from zero",
+                    "Build reactive interfaces using React and Vite",
+                    "Configure secure JWT authentication"
+                ],
+                "modules": [
+                    {
+                        "title": "Module 1: Introduction and Setup",
+                        "description": "Setting up the complete development environment.",
+                        "order": 1,
+                        "lessons": [
+                            {"title": "Installing development tools", "duration_in_minutes": 15, "order": 1},
+                            {"title": "Django project structure", "duration_in_minutes": 25, "order": 2}
+                        ]
+                    },
+                    {
+                        "title": "Module 2: Building the Backend API",
+                        "description": "Developing models and secure endpoints.",
+                        "order": 2,
+                        "lessons": [
+                            {"title": "Configuring DRF", "duration_in_minutes": 30, "order": 1},
+                            {"title": "Serializers and Views", "duration_in_minutes": 45, "order": 2}
+                        ]
+                    }
+                ],
+                "resources": [
+                    {"title": "Complete Course Syllabus (PDF)", "file_url": "https://example.com/resources/complete-course.pdf", "type": Resource.ResourceTypeChoices.DOCUMENT},
+                    {"title": "GitHub Repository Source Code", "file_url": "https://github.com/example/fullstack-repo", "type": Resource.ResourceTypeChoices.EXTERNAL_LINK}
+                ]
             },
             {
-                "category": categories_dict["Développement Web"],
-                "title": "Introduction à Docker et Kubernetes pour le DevOps",
-                "subtitle": "Conteneurisez vos applications et orchestrez vos déploiements.",
-                "description": "Découvrez les bases de Docker, comment écrire un Dockerfile optimisé et comment déployer vos applications multi-conteneurs en production avec Docker Compose et Kubernetes.",
-                "language": "french",  # <--- CORRIGÉ : "French" -> "french"
-                "level": "beginner",
+                "category": categories_dict["Web Development"],
+                "title": "Advanced DevOps & Docker Pipeline Mastery",
+                "subtitle": "Automate deployment and scale your applications effortlessly.",
+                "description": "Learn containerization, CI/CD pipelines, and orchestration with Docker and Kubernetes to ensure smooth enterprise-grade deployments.",
+                "language": "english",
+                "level": "advanced",
                 "status": "published",
-                "price": Decimal("49.99"),
-                "discount_price": Decimal("29.99"),
-                "thumbnail": "https://images.unsplash.com/photo-1607799279861-4dd421887fb3",
-                "promo_video_url": "https://www.w3schools.com/html/movie.mp4",
-                "average_rating": Decimal("4.6"),
-                "total_students": 840,
-                "total_reviews": 110,
-                "tags_to_add": ["Docker", "DevOps", "Kubernetes"]
+                "price": Decimal("249.99"),
+                "discount_price": Decimal("129.99"),
+                "thumbnail": "https://images.unsplash.com/photo-1618401471353-b98aedd04e11",
+                "promo_video_url": "https://www.youtube.com/watch?v=zu_lcO7Yueo",
+                "average_rating": Decimal("4.9"),
+                "total_students": 850,
+                "total_reviews": 145,
+                "tags_to_add": ["Docker", "DevOps", "Kubernetes", "Backend"],
+                "highlights": [
+                    "Advanced Kubernetes cluster architectures",
+                    "Continuous Integration workflows with GitHub Actions",
+                    "Best practices for container security"
+                ],
+                "learning_points": [
+                    "Containerize any legacy or modern application",
+                    "Deploy scalable clusters on the cloud",
+                    "Monitor infrastructure health efficiently"
+                ],
+                "modules": [
+                    {
+                        "title": "Module 1: Docker Essentials",
+                        "description": "Understanding containers, images, and multi-stage builds.",
+                        "order": 1,
+                        "lessons": [
+                            {"title": "Dockerfiles best practices", "duration_in_minutes": 20, "order": 1},
+                            {"title": "Docker Compose orchestration", "duration_in_minutes": 35, "order": 2}
+                        ]
+                    }
+                ],
+                "resources": [
+                    {"title": "DevOps Cheat Sheet", "file_url": "https://example.com/resources/devops-cheatsheet.pdf", "type": Resource.ResourceTypeChoices.DOCUMENT}
+                ]
             },
             {
                 "category": categories_dict["Design & UI/UX"],
-                "title": "Maîtriser Figma de débutant à pro",
-                "subtitle": "Concevez de superbes interfaces web et mobiles modernes.",
-                "description": "Figma est l'outil indispensable du designer d'interface. Apprenez le responsive design, le prototypage interactif, les systèmes de composants et le travail collaboratif.",
-                "language": "french",  # <--- CORRIGÉ : "French" -> "french"
+                "title": "UI/UX Design Masterclass with Figma",
+                "subtitle": "Design stunning, user-centric mobile and web interfaces.",
+                "description": "Dive deep into user experience research, wireframing, interactive prototyping, and modern design systems using Figma.",
+                "language": "english",
                 "level": "beginner",
                 "status": "published",
-                "price": Decimal("89.99"),
-                "discount_price": Decimal("0.00"),
-                "thumbnail": "https://images.unsplash.com/photo-1611532736597-de2d4265fba3",
-                "promo_video_url": "https://www.w3schools.com/html/mov_bbb.mp4",
-                "average_rating": Decimal("4.9"),
-                "total_students": 2500,
-                "total_reviews": 680,
-                "tags_to_add": ["Figma", "UI/UX", "Design"]
+                "price": Decimal("149.99"),
+                "discount_price": Decimal("79.99"),
+                "thumbnail": "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e",
+                "promo_video_url": "https://www.youtube.com/watch?v=2TlIg3VokY8",
+                "average_rating": Decimal("4.7"),
+                "total_students": 2300,
+                "total_reviews": 410,
+                "tags_to_add": ["Figma", "UI/UX", "Design"],
+                "highlights": [
+                    "Design systems creation from scratch",
+                    "Advanced Figma components and auto-layout",
+                    "Real user testing strategies"
+                ],
+                "learning_points": [
+                    "Build clickable interactive prototypes",
+                    "Conduct effective user research interviews",
+                    "Export assets for developers seamlessly"
+                ],
+                "modules": [
+                    {
+                        "title": "Module 1: Figma Fundamentals",
+                        "description": "Getting comfortable with interface layout and frames.",
+                        "order": 1,
+                        "lessons": [
+                            {"title": "Navigating Figma Workspace", "duration_in_minutes": 10, "order": 1},
+                            {"title": "Auto Layout mastery", "duration_in_minutes": 30, "order": 2}
+                        ]
+                    }
+                ],
+                "resources": [
+                    {"title": "UI Kit Figma Template", "file_url": "https://figma.com/@example/uikit-template", "type": Resource.ResourceTypeChoices.EXTERNAL_LINK}
+                ]
             },
             {
                 "category": categories_dict["Business & Marketing"],
-                "title": "Stratégie Marketing Digital & SEO",
-                "subtitle": "Dominez les résultats Google et convertissez vos visiteurs.",
-                "description": "Une approche pratique du référencement naturel (SEO), de la rédaction web, du copywriting et de l'acquisition de trafic via les réseaux sociaux.",
-                "language": "french",  # <--- CORRIGÉ : "French" -> "french"
-                "level": "advanced",
-                "status": "draft",
-                "price": Decimal("149.99"),
-                "discount_price": Decimal("119.99"),
-                "thumbnail": "https://images.unsplash.com/photo-1460925895917-afdab827c52f",
-                "promo_video_url": "https://www.w3schools.com/html/movie.mp4",
-                "average_rating": Decimal("0.0"),
-                "total_students": 0,
-                "total_reviews": 0,
-                "tags_to_add": ["SEO", "Marketing"]
+                "title": "Growth Hacking & SaaS Marketing Blueprint",
+                "subtitle": "Acquire thousands of users without spending a fortune on ads.",
+                "description": "Discover proven growth loops, viral marketing tactics, SEO strategies, and conversion rate optimization (CRO) tailored for SaaS products.",
+                "language": "english",
+                "level": "intermediate",
+                "status": "published",
+                "price": Decimal("179.99"),
+                "discount_price": Decimal("89.99"),
+                "thumbnail": "https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a",
+                "promo_video_url": "https://www.youtube.com/watch?v=D1B_BkGHbqs",
+                "average_rating": Decimal("4.6"),
+                "total_students": 920,
+                "total_reviews": 180,
+                "tags_to_add": ["SEO", "Marketing", "SaaS"],
+                "highlights": [
+                    "Data-driven customer acquisition frameworks",
+                    "High-converting landing page frameworks",
+                    "Email automation sequences that convert"
+                ],
+                "learning_points": [
+                    "Identify your product-market fit metrics",
+                    "Rank higher on search engines organically",
+                    "Optimize onboarding funnels for retention"
+                ],
+                "modules": [
+                    {
+                        "title": "Module 1: Foundations of Growth",
+                        "description": "Core concepts of product-led growth and metrics tracking.",
+                        "order": 1,
+                        "lessons": [
+                            {"title": "Calculating CAC and LTV", "duration_in_minutes": 25, "order": 1},
+                            {"title": "Setting up analytics tools", "duration_in_minutes": 20, "order": 2}
+                        ]
+                    }
+                ],
+                "resources": [
+                    {"title": "SaaS Growth Framework Template", "file_url": "https://example.com/resources/growth-framework.xlsx", "type": Resource.ResourceTypeChoices.DOCUMENT}
+                ]
             }
         ]
 
-        # 5. Insertion des cours et association des tags
+        # 5. Insertion of courses and relations
         for course_item in courses_data:
             course = Course.objects.create(
                 category=course_item["category"],
-                instructor_id=instructor_id,
+                user_id=instructor_id,
+                user_email=instructor_email,
+                user_roles=instructor_roles,
                 title=course_item["title"],
                 slug=slugify(course_item["title"]),
                 subtitle=course_item["subtitle"],
@@ -152,9 +278,58 @@ class Command(BaseCommand):
                 total_reviews=course_item["total_reviews"]
             )
 
+            # Tags
             tags_to_add = [tags_dict[name] for name in course_item["tags_to_add"] if name in tags_dict]
             course.tags.add(*tags_to_add)
 
-            self.stdout.write(f"Cours créé : '{course.title}' avec {len(tags_to_add)} tags (Instructor: {instructor_id})")
+            # Highlights
+            for idx, item_text in enumerate(course_item.get("highlights", []), start=1):
+                CourseHighlight.objects.create(course=course, title=item_text, order=idx)
 
-        self.stdout.write(self.style.SUCCESS("Peuplement terminé avec succès !"))
+            # Learning Points
+            for idx, item_text in enumerate(course_item.get("learning_points", []), start=1):
+                CourseLearningPoint.objects.create(course=course, title=item_text, order=idx)
+
+            # Modules and Lessons
+            for mod_data in course_item.get("modules", []):
+                module = Module.objects.create(
+                    course=course,
+                    title=mod_data["title"],
+                    description=mod_data["description"],
+                    order=mod_data["order"]
+                )
+
+                for les_data in mod_data.get("lessons", []):
+                    duration_min = les_data["duration_in_minutes"]
+                    lesson = Lesson.objects.create(
+                        module=module,
+                        title=les_data["title"],
+                        duration_in_minutes=duration_min,
+                        order=les_data["order"]
+                    )
+
+                    # Assigner l'un de vos liens YouTube en boucle
+                    current_youtube_url = youtube_links[video_counter % len(youtube_links)]
+                    video_counter += 1
+
+                    # Video (Sans duration_in_seconds)
+                    Video.objects.create(
+                        lesson=lesson,
+                        title=f"Video: {les_data['title']}",
+                        video_url=current_youtube_url
+                    )
+
+            # Resources
+            for res_data in course_item.get("resources", []):
+                resource = Resource(
+                    course=course,
+                    title=res_data["title"],
+                    external_url=res_data["file_url"],
+                    resource_type=res_data.get("type", Resource.ResourceTypeChoices.EXTERNAL_LINK)
+                )
+                resource.full_clean()
+                resource.save()
+
+            self.stdout.write(f"Course successfully created: '{course.title}'")
+
+        self.stdout.write(self.style.SUCCESS("Complete database seeding with YouTube links finished successfully!"))
