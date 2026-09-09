@@ -1,11 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import LessonViewSet
+from .views import LessonViewSet, LabActivityViewSet
 
-# Le router génère automatiquement toutes les routes standard pour le CRUD
-# (GET, POST, PUT, PATCH, DELETE) ainsi que l'action personnalisée by_module
 router = DefaultRouter()
 router.register(r'lessons', LessonViewSet, basename='lesson')
+router.register(r'lab-activities', LabActivityViewSet, basename='lab-activity')
 
 urlpatterns = [
     path('', include(router.urls)),

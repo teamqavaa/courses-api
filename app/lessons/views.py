@@ -4,8 +4,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
-from lessons.models import Lesson
-from lessons.serializers import LessonDetailSerializer, LessonCreateUpdateSerializer
+from lessons.models import Lesson, LabActivity
+from lessons.serializers import (
+    LessonDetailSerializer,
+    LessonCreateUpdateSerializer,
+    LabActivitySerializer,
+)
 
 
 class HasSSORole(permissions.BasePermission):
@@ -50,7 +54,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         - Autres rôles (ex: Étudiants) : Voient uniquement les leçons publiées.
         """
         user = self.request.user
-        queryset = Lesson.objects.select_related('module').prefetch_related('video').all()
+        queryset = Lesson.objects.select_related('module').prefetch_related('video', 'lab_activities').all()
 
         user_role = getattr(user, 'role', None)
         is_admin_or_instructor = (
@@ -82,3 +86,21 @@ class LessonViewSet(viewsets.ModelViewSet):
         lessons = self.get_queryset().filter(module_id=module_id).order_by('order')
         serializer = LessonDetailSerializer(lessons, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class LabActivityViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for LabActivity (labs linked to lessons).
+
+    - GET /api/lab-activities/              : List all (filterable by lesson_id)
+    - POST /api/lab-activities/             : Create
+    - PATCH /api/lab-activities/{uuid}/     : Update
+    - DELETE /api/lab-activities/{uuid}/    : Delete
+    """
+    permission_classes = [permissions.IsAuthenticated, HasSSORole]
+    serializer_class = LabActivitySerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['lesson']
+
+    def get_queryset(self):
+        return LabActivity.objects.select_related('lesson').all()

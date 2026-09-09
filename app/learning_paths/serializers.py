@@ -11,10 +11,24 @@ class PathOutcomeSerializer(serializers.ModelSerializer):
         fields = ['id', 'order', 'content']
 
 
+class PathOutcomeWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PathOutcome
+        fields = ['id', 'order', 'content']
+        read_only_fields = ['id']
+
+
 class PathPrerequisiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = PathPrerequisite
         fields = ['id', 'order', 'content']
+
+
+class PathPrerequisiteWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PathPrerequisite
+        fields = ['id', 'order', 'content']
+        read_only_fields = ['id']
 
 
 class LearningPathSerializer(serializers.ModelSerializer):
