@@ -91,6 +91,8 @@ class Course(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    """institution name in database"""
+
     class Meta:
         ordering = ["-created_at"]
         verbose_name = "Cours"

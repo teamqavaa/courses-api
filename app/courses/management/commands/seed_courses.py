@@ -7,6 +7,7 @@ from categories.models import Category
 from tags.models import Tag
 from highlights.models import CourseHighlight
 from learning_points.models import CourseLearningPoint
+from outcomes.models import CourseOutcome  # 👈 Import ajouté
 from modules.models import Module
 from lessons.models import Lesson
 from resources.models import Resource
@@ -25,6 +26,7 @@ class Command(BaseCommand):
         Resource.objects.all().delete()
         Lesson.objects.all().delete()
         Module.objects.all().delete()
+        CourseOutcome.objects.all().delete()          # 👈 Nettoyage des outcomes
         CourseLearningPoint.objects.all().delete()
         CourseHighlight.objects.all().delete()
         Course.objects.all().delete()
@@ -105,6 +107,10 @@ class Command(BaseCommand):
                     "Build reactive interfaces using React and Vite",
                     "Configure secure JWT authentication"
                 ],
+                "outcomes": [  # 👈 Ajouté
+                    "Build and deploy a full-scale SaaS application from scratch",
+                    "Master modern state management and API integration"
+                ],
                 "modules": [
                     {
                         "title": "Module 1: Introduction and Setup",
@@ -156,6 +162,10 @@ class Command(BaseCommand):
                     "Deploy scalable clusters on the cloud",
                     "Monitor infrastructure health efficiently"
                 ],
+                "outcomes": [  # 👈 Ajouté
+                    "Set up automated CI/CD pipelines for zero-downtime deploys",
+                    "Manage multi-container Docker applications effortlessly"
+                ],
                 "modules": [
                     {
                         "title": "Module 1: Docker Essentials",
@@ -197,6 +207,10 @@ class Command(BaseCommand):
                     "Conduct effective user research interviews",
                     "Export assets for developers seamlessly"
                 ],
+                "outcomes": [  # 👈 Ajouté
+                    "Design professional user interfaces ready for developer handoff",
+                    "Create reusable and scalable design systems"
+                ],
                 "modules": [
                     {
                         "title": "Module 1: Figma Fundamentals",
@@ -237,6 +251,10 @@ class Command(BaseCommand):
                     "Identify your product-market fit metrics",
                     "Rank higher on search engines organically",
                     "Optimize onboarding funnels for retention"
+                ],
+                "outcomes": [  # 👈 Ajouté
+                    "Drive organic traffic and acquire sustainable customer growth",
+                    "Optimize conversion funnels to maximize user retention"
                 ],
                 "modules": [
                     {
@@ -290,6 +308,15 @@ class Command(BaseCommand):
             for idx, item_text in enumerate(course_item.get("learning_points", []), start=1):
                 CourseLearningPoint.objects.create(course=course, title=item_text, order=idx)
 
+            # Outcomes (Objectifs pédagogiques) 👈 Ajouté ici
+            for idx, item_text in enumerate(course_item.get("outcomes", []), start=1):
+                CourseOutcome.objects.create(
+                    course=course,
+                    description=item_text,
+                    order=idx,
+                    is_published=True
+                )
+
             # Modules and Lessons
             for mod_data in course_item.get("modules", []):
                 module = Module.objects.create(
@@ -332,4 +359,4 @@ class Command(BaseCommand):
 
             self.stdout.write(f"Course successfully created: '{course.title}'")
 
-        self.stdout.write(self.style.SUCCESS("Complete database seeding with YouTube links finished successfully!"))
+        self.stdout.write(self.style.SUCCESS("Complete database seeding with YouTube links and outcomes finished successfully!"))
