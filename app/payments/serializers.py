@@ -8,6 +8,7 @@ from orders.models import Order
 class PaymentProviderSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentProvider
+        ref_name = 'PaymentsPaymentProvider'  # <-- Empêche la collision Swagger avec l'app 'payment_providers'
         fields = ['id', 'name', 'code', 'is_active', 'logo']
         read_only_fields = fields
 
