@@ -45,6 +45,7 @@ jobs:
           docker push $IMAGE_TAG
 
       - name: Deploy to Cloud Run
+        id: deploy # 🟢 Nécessaire pour récupérer les variables de sortie
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
@@ -57,3 +58,9 @@ jobs:
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             SECRET_KEY=${{ secrets.SECRET_KEY }}
           flags: '--add-cloudsql-instances=${{ secrets.CLOUD_SQL_CONNECTION_NAME }} --allow-unauthenticated'
+
+      # 🟢 Affichage de l'URL du service déployé
+      - name: Show Service URL
+        run: |
+          echo "Deploiement reussi !"
+          echo "URL du service : ${{ steps.deploy.outputs.url }}"
