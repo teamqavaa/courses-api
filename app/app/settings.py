@@ -18,8 +18,8 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-srb9il*-hdj!v77(^t!
 # 🟢 DEBUG : Evaluation propre du booléen (True par défaut)
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
 
-# 🟢 ALLOWED_HOSTS : Nettoyage automatique des espaces
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',') if host.strip()]
+# 🟢 ALLOWED_HOSTS : Inclusion de '*' par défaut pour accepter Cloud Run et tous les domaines
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '*').split(',') if host.strip()]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
