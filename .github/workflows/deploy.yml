@@ -64,3 +64,4 @@ jobs:
         run: |
           echo "Deploiement reussi !"
           echo "URL du service : ${{ steps.deploy.outputs.url }}"
+
