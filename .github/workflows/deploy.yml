@@ -5,7 +5,6 @@ on:
     branches:
       - main
 
-# 🟢 CRITIQUE pour Workload Identity Federation
 permissions:
   contents: read
   id-token: write
@@ -16,6 +15,7 @@ env:
   GAR_LOCATION: europe-west1
   REPOSITORY: my-repository
   SERVICE_NAME: contents-lab-api
+  JOB_NAME: contents-lab-migrate
 
 jobs:
   deploy:
@@ -25,7 +25,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 🟢 Authentification via Workload Identity Federation (sans clé JSON)
+      # 1. Authentification Google Cloud
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -38,14 +38,36 @@ jobs:
       - name: Authorize Docker Push
         run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet
 
+      # 2. Build et Push de l'image
       - name: Build and Push Docker Image
         run: |
           IMAGE_TAG="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
 
+      # 3. 🟢 EXÉCUTION ET VÉRIFICATION DES MIGRATIONS BDD
+      - name: Run Database Migrations
+        run: |
+          IMAGE_TAG="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+
+          # Configuration ou mise à jour du Job Cloud Run
+          gcloud run jobs deploy ${{ env.JOB_NAME }} \
+            --image=$IMAGE_TAG \
+            --region=${{ env.REGION }} \
+            --command=python \
+            --args=manage.py,migrate \
+            --set-cloudsql-instances=${{ secrets.CLOUD_SQL_CONNECTION_NAME }} \
+            --set-env-vars="CLOUD_SQL_CONNECTION_NAME=${{ secrets.CLOUD_SQL_CONNECTION_NAME }},DB_NAME=${{ secrets.DB_NAME }},DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DJANGO_SECRET_KEY=${{ secrets.SECRET_KEY }}" \
+            --quiet
+
+          # Exécution du Job et attente du résultat (--wait)
+          gcloud run jobs execute ${{ env.JOB_NAME }} \
+            --region=${{ env.REGION }} \
+            --wait
+
+      # 4. Déploiement de l'API (s'exécute uniquement si l'étape 3 réussit)
       - name: Deploy to Cloud Run
-        id: deploy # 🟢 Nécessaire pour récupérer les variables de sortie
+        id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
@@ -56,12 +78,10 @@ jobs:
             DB_NAME=${{ secrets.DB_NAME }}
             DB_USER=${{ secrets.DB_USER }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            DJANGO_SECRET_KEY=${{ secrets.SECRET_KEY }}
           flags: '--add-cloudsql-instances=${{ secrets.CLOUD_SQL_CONNECTION_NAME }} --allow-unauthenticated'
 
-      # 🟢 Affichage de l'URL du service déployé
       - name: Show Service URL
         run: |
           echo "Deploiement reussi !"
           echo "URL du service : ${{ steps.deploy.outputs.url }}"
-
