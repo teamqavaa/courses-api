@@ -1,22 +1,17 @@
-# app/categories/management/commands/seed_categories.py
 from django.core.management.base import BaseCommand
+from django.utils.text import slugify
 from categories.models import Category
-from courses.models import Course  # <--- AJOUTÉ : Pour supprimer les clés étrangères référencées
 
 
 class Command(BaseCommand):
-    help = "Seeds the database with 10 main categories and at least 5 subcategories each for a modern LMS (in English)."
+    help = "Safely seeds or updates the database with 10 main categories and subcategories for a modern LMS (in English)."
 
     def handle(self, *args, **options):
-        self.stdout.write("Purging existing courses...")
-        # 1. On supprime d'abord les cours qui référencent (PROTECT) les catégories
-        Course.objects.all().delete()
+        self.stdout.write("Starting safe categories seeding/updating...")
 
-        self.stdout.write("Purging existing categories...")
-        # 2. On peut maintenant supprimer les catégories en toute sécurité
-        Category.objects.all().delete()
+        # Plus de suppression massive (.delete()) pour éviter le ProtectedError !
+        # On utilise update_or_create pour synchroniser proprement les catégories.
 
-        # Structure des données des catégories
         categories_data = [
             # 1. Software Development
             {
@@ -140,25 +135,29 @@ class Command(BaseCommand):
             }
         ]
 
-        def create_categories_recursive(data_list, parent=None):
+        def sync_categories_recursive(data_list, parent=None):
             count = 0
             for item in data_list:
-                category = Category.objects.create(
+                category, created = Category.objects.update_or_create(
                     name=item["name"],
-                    description=item["description"],
                     parent=parent,
-                    is_active=True
+                    defaults={
+                        "slug": slugify(item["name"]),
+                        "description": item["description"],
+                        "is_active": True
+                    }
                 )
+                action = "Created" if created else "Updated"
+                self.stdout.write(f"  -> {action}: '{category.name}'")
                 count += 1
-                self.stdout.write(f"Created: {category}")
 
                 if "subcategories" in item and item["subcategories"]:
-                    count += create_categories_recursive(item["subcategories"], parent=category)
+                    count += sync_categories_recursive(item["subcategories"], parent=category)
 
             return count
 
-        total_created = create_categories_recursive(categories_data)
+        total_synced = sync_categories_recursive(categories_data)
 
         self.stdout.write(
-            self.style.SUCCESS(f"Successfully seeded {total_created} categories and subcategories!")
+            self.style.SUCCESS(f"Successfully synchronized {total_synced} categories and subcategories!")
         )
