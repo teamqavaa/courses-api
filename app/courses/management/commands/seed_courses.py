@@ -7,7 +7,7 @@ from categories.models import Category
 from tags.models import Tag
 from highlights.models import CourseHighlight
 from learning_points.models import CourseLearningPoint
-from outcomes.models import CourseOutcome  # 👈 Import ajouté
+from outcomes.models import CourseOutcome
 from modules.models import Module
 from lessons.models import Lesson
 from resources.models import Resource
@@ -15,26 +15,16 @@ from videos.models import Video
 
 
 class Command(BaseCommand):
-    help = "Populates the database with categories, tags, 4 English courses, and YouTube video links."
+    help = "Safely populates or updates the database with categories, tags, 4 English courses, and YouTube video links."
 
     def handle(self, *args, **options):
-        self.stdout.write("Starting complete database seeding...")
+        self.stdout.write("Starting safe database seeding/updating...")
 
-        # 1. Complete cleanup in reverse order of dependencies
-        self.stdout.write("Cleaning up existing database...")
-        Video.objects.all().delete()
-        Resource.objects.all().delete()
-        Lesson.objects.all().delete()
-        Module.objects.all().delete()
-        CourseOutcome.objects.all().delete()          # 👈 Nettoyage des outcomes
-        CourseLearningPoint.objects.all().delete()
-        CourseHighlight.objects.all().delete()
-        Course.objects.all().delete()
-        Category.objects.all().delete()
-        Tag.objects.all().delete()
+        # 1. Plus de suppression massive (.delete()) pour protéger les commandes existantes !
+        # On passe directement à la création/mise à jour idempotente.
 
-        # 2. Creation of tags
-        self.stdout.write("Creating tags...")
+        # 2. Creation or retrieval of tags
+        self.stdout.write("Processing tags...")
         tags_list = [
             "Python", "Django", "React", "Frontend", "Backend",
             "Docker", "DevOps", "Kubernetes", "Figma", "UI/UX",
@@ -49,7 +39,7 @@ class Command(BaseCommand):
             )
             tags_dict[tag_name] = tag
 
-        # 3. Creation of categories
+        # 3. Creation or retrieval of categories
         categories_data = [
             {"name": "Web Development", "description": "Learn to code modern websites and applications."},
             {"name": "Design & UI/UX", "description": "Master design tools and user experience principles."},
@@ -71,7 +61,7 @@ class Command(BaseCommand):
         instructor_email = "expert.instructor@example.com"
         instructor_roles = ["instructor", "admin"]
 
-        # Vos liens YouTube à distribuer sur les leçons
+        # Liens YouTube à distribuer sur les leçons
         youtube_links = [
             "https://www.youtube.com/watch?v=D1B_BkGHbqs",
             "https://www.youtube.com/watch?v=zu_lcO7Yueo",
@@ -79,7 +69,7 @@ class Command(BaseCommand):
         ]
         video_counter = 0
 
-        # 4. List of 4 rich courses to insert
+        # 4. List of 4 rich courses to insert or update
         courses_data = [
             {
                 "category": categories_dict["Web Development"],
@@ -107,7 +97,7 @@ class Command(BaseCommand):
                     "Build reactive interfaces using React and Vite",
                     "Configure secure JWT authentication"
                 ],
-                "outcomes": [  # 👈 Ajouté
+                "outcomes": [
                     "Build and deploy a full-scale SaaS application from scratch",
                     "Master modern state management and API integration"
                 ],
@@ -162,7 +152,7 @@ class Command(BaseCommand):
                     "Deploy scalable clusters on the cloud",
                     "Monitor infrastructure health efficiently"
                 ],
-                "outcomes": [  # 👈 Ajouté
+                "outcomes": [
                     "Set up automated CI/CD pipelines for zero-downtime deploys",
                     "Manage multi-container Docker applications effortlessly"
                 ],
@@ -207,7 +197,7 @@ class Command(BaseCommand):
                     "Conduct effective user research interviews",
                     "Export assets for developers seamlessly"
                 ],
-                "outcomes": [  # 👈 Ajouté
+                "outcomes": [
                     "Design professional user interfaces ready for developer handoff",
                     "Create reusable and scalable design systems"
                 ],
@@ -252,7 +242,7 @@ class Command(BaseCommand):
                     "Rank higher on search engines organically",
                     "Optimize onboarding funnels for retention"
                 ],
-                "outcomes": [  # 👈 Ajouté
+                "outcomes": [
                     "Drive organic traffic and acquire sustainable customer growth",
                     "Optimize conversion funnels to maximize user retention"
                 ],
@@ -273,42 +263,48 @@ class Command(BaseCommand):
             }
         ]
 
-        # 5. Insertion of courses and relations
+        # 5. Safe Insertion or Update of courses using update_or_create
         for course_item in courses_data:
-            course = Course.objects.create(
-                category=course_item["category"],
-                user_id=instructor_id,
-                user_email=instructor_email,
-                user_roles=instructor_roles,
-                title=course_item["title"],
-                slug=slugify(course_item["title"]),
-                subtitle=course_item["subtitle"],
-                description=course_item["description"],
-                language=course_item["language"],
-                level=course_item["level"],
-                status=course_item["status"],
-                price=course_item["price"],
-                discount_price=course_item["discount_price"],
-                thumbnail=course_item["thumbnail"],
-                promo_video_url=course_item["promo_video_url"],
-                average_rating=course_item["average_rating"],
-                total_students=course_item["total_students"],
-                total_reviews=course_item["total_reviews"]
+            course_slug = slugify(course_item["title"])
+            course, created = Course.objects.update_or_create(
+                slug=course_slug,
+                defaults={
+                    "category": course_item["category"],
+                    "user_id": instructor_id,
+                    "user_email": instructor_email,
+                    "user_roles": instructor_roles,
+                    "title": course_item["title"],
+                    "subtitle": course_item["subtitle"],
+                    "description": course_item["description"],
+                    "language": course_item["language"],
+                    "level": course_item["level"],
+                    "status": course_item["status"],
+                    "price": course_item["price"],
+                    "discount_price": course_item["discount_price"],
+                    "thumbnail": course_item["thumbnail"],
+                    "promo_video_url": course_item["promo_video_url"],
+                    "average_rating": course_item["average_rating"],
+                    "total_students": course_item["total_students"],
+                    "total_reviews": course_item["total_reviews"]
+                }
             )
 
             # Tags
             tags_to_add = [tags_dict[name] for name in course_item["tags_to_add"] if name in tags_dict]
-            course.tags.add(*tags_to_add)
+            course.tags.set(tags_to_add)  # .set() met à jour proprement sans dupliquer
 
-            # Highlights
+            # Highlights (on recrée proprement pour ce cours si besoin)
+            course.highlights.all().delete()
             for idx, item_text in enumerate(course_item.get("highlights", []), start=1):
                 CourseHighlight.objects.create(course=course, title=item_text, order=idx)
 
             # Learning Points
+            course.learning_points.all().delete()
             for idx, item_text in enumerate(course_item.get("learning_points", []), start=1):
                 CourseLearningPoint.objects.create(course=course, title=item_text, order=idx)
 
-            # Outcomes (Objectifs pédagogiques) 👈 Ajouté ici
+            # Outcomes
+            course.outcomes.all().delete()
             for idx, item_text in enumerate(course_item.get("outcomes", []), start=1):
                 CourseOutcome.objects.create(
                     course=course,
@@ -317,7 +313,9 @@ class Command(BaseCommand):
                     is_published=True
                 )
 
-            # Modules and Lessons
+            # Modules, Lessons & Videos
+            # Note: Si des commandes existent, les modules/leçons associés aux cours peuvent être mis à jour sans danger de suppression globale de la table `Course`.
+            course.modules.all().delete()
             for mod_data in course_item.get("modules", []):
                 module = Module.objects.create(
                     course=course,
@@ -335,11 +333,9 @@ class Command(BaseCommand):
                         order=les_data["order"]
                     )
 
-                    # Assigner l'un de vos liens YouTube en boucle
                     current_youtube_url = youtube_links[video_counter % len(youtube_links)]
                     video_counter += 1
 
-                    # Video (Sans duration_in_seconds)
                     Video.objects.create(
                         lesson=lesson,
                         title=f"Video: {les_data['title']}",
@@ -347,6 +343,7 @@ class Command(BaseCommand):
                     )
 
             # Resources
+            course.resources.all().delete()
             for res_data in course_item.get("resources", []):
                 resource = Resource(
                     course=course,
@@ -357,6 +354,7 @@ class Command(BaseCommand):
                 resource.full_clean()
                 resource.save()
 
-            self.stdout.write(f"Course successfully created: '{course.title}'")
+            action_msg = "created" if created else "updated"
+            self.stdout.write(f"Course successfully {action_msg}: '{course.title}'")
 
-        self.stdout.write(self.style.SUCCESS("Complete database seeding with YouTube links and outcomes finished successfully!"))
+        self.stdout.write(self.style.SUCCESS("Safe database seeding/updating finished successfully!"))
