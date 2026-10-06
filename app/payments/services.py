@@ -203,7 +203,7 @@ class PaymentService:
         if provider_code == "QAVAA":
             return {
                 'transaction_reference': f"qavaa_tx_{payment.id.hex[:12]}",
-                'client_secret': f"http://localhost:3001/qavaa?order_id={order.id}"
+                'client_secret': f"https://qi-front-app-l2tbnetuqa-ew.a.run.app/qavaa?order_id={order.id}"
             }
         elif provider_code == "IGNITE":
             return {
