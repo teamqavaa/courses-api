@@ -9,9 +9,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write("Starting safe categories seeding/updating...")
 
-        # Plus de suppression massive (.delete()) pour éviter le ProtectedError !
-        # On utilise update_or_create pour synchroniser proprement les catégories.
-
         categories_data = [
             # 1. Software Development
             {
@@ -138,11 +135,13 @@ class Command(BaseCommand):
         def sync_categories_recursive(data_list, parent=None):
             count = 0
             for item in data_list:
+                # On recherche uniquement par name (qui est unique en base)
+                # et on met à jour le parent et les autres champs dans defaults
                 category, created = Category.objects.update_or_create(
                     name=item["name"],
-                    parent=parent,
                     defaults={
                         "slug": slugify(item["name"]),
+                        "parent": parent,
                         "description": item["description"],
                         "is_active": True
                     }
