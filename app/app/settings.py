@@ -97,7 +97,8 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    # Tokens du SSO vérifiés via le JWKS (core/sso.py)
+    'DEFAULT_AUTHENTICATION_CLASSES': ['core.sso.SSOAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': [],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'
 }

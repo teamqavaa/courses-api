@@ -1,5 +1,7 @@
 # app/payments/views.py
 import jwt
+
+from core.sso import verify_sso_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, permissions
@@ -39,7 +41,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             return None, None, None
 
         try:
-            payload = jwt.decode(token, options={"verify_signature": False})
+            payload = verify_sso_token(token)
             user_id = payload.get("sub")
             email = payload.get("email")
             roles = payload.get("roles", [])

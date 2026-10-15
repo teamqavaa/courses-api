@@ -1,14 +1,13 @@
-import jwt
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import AuthenticationFailed
 from django.core.exceptions import ValidationError
 
 from .models import Cart
 from cart_items.models import CartItem
 from .serializers import CartSerializer
 from courses.models import Course
+from core.utils import get_user_sub_from_request
 
 
 class CartViewSet(viewsets.GenericViewSet):
@@ -21,20 +20,7 @@ class CartViewSet(viewsets.GenericViewSet):
 
     def get_cart(self, request):
         """Récupère ou crée le panier basé sur le 'sub' extrait du cookie access_token."""
-        access_token = request.COOKIES.get('access_token')
-
-        if not access_token:
-            raise AuthenticationFailed("Access token manquant dans les cookies.")
-
-        try:
-            payload = jwt.decode(access_token, options={"verify_signature": False})
-            user_sub = payload.get('sub')
-
-            if not user_sub:
-                raise AuthenticationFailed("Le champ 'sub' est absent du token.")
-
-        except jwt.PyJWTError:
-            raise AuthenticationFailed("Access token invalide.")
+        user_sub = get_user_sub_from_request(request)
 
         cart, _ = Cart.objects.get_or_create(user_id=str(user_sub))
         return cart

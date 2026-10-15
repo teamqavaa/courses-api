@@ -1,4 +1,6 @@
 import jwt
+
+from core.sso import verify_sso_token
 from rest_framework import viewsets, status, permissions
 from rest_framework.response import Response
 from .models import PaymentProvider
@@ -26,7 +28,7 @@ class PaymentProviderViewSet(viewsets.ModelViewSet):
             return None, False
 
         try:
-            payload = jwt.decode(token, options={"verify_signature": False})
+            payload = verify_sso_token(token)
             user_id = payload.get("sub")
             roles = payload.get("roles", [])
 
