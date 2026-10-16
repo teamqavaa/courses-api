@@ -64,10 +64,13 @@ class CourseSerializer(serializers.ModelSerializer):
             "user_id",
             "user_email",
             "user_roles",
+            "instructor_name",
             "title",
             "slug",
             "subtitle",
             "description",
+            "prerequisites",
+            "target_audience",
             "language",
             "level",
             "status",
@@ -97,6 +100,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "user_id",
             "user_email",
             "user_roles",
+            "instructor_name",
             "average_rating",
             "total_students",
             "total_reviews",
@@ -104,6 +108,18 @@ class CourseSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Email et rôles du formateur : réservés à son propriétaire et aux administrateurs
+        user = getattr(self.context.get("request"), "user", None)
+        is_manager = getattr(user, "is_admin", False) or (
+            getattr(user, "is_authenticated", False) and str(user.id) == instance.user_id
+        )
+        if not is_manager:
+            data.pop("user_email", None)
+            data.pop("user_roles", None)
+        return data
 
     def get_is_enrolled(self, obj) -> bool:
         request = self.context.get("request")
@@ -182,6 +198,7 @@ class CourseSerializer(serializers.ModelSerializer):
             )
             validated_data["user_email"] = getattr(request.user, "email", "")
             validated_data["user_roles"] = getattr(request.user, "roles", [])
+            validated_data["instructor_name"] = getattr(request.user, "name", "") or ""
         else:
             raise serializers.ValidationError(
                 {"detail": "An authenticated user is required to create a course."}
@@ -234,6 +251,36 @@ class CourseManageSerializer(serializers.ModelSerializer):
 
     def get_lessons_count(self, obj) -> int:
         return sum(len(module.lessons.all()) for module in obj.modules.all())
+
+
+class CourseSearchSerializer(serializers.ModelSerializer):
+    """Résultat de recherche : données publiques et légères d'un cours publié."""
+    category_details = CategorySerializer(source="category", read_only=True)
+    lessons_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Course
+        fields = [
+            "id",
+            "slug",
+            "title",
+            "subtitle",
+            "level",
+            "language",
+            "thumbnail",
+            "instructor_name",
+            "category_details",
+            "average_rating",
+            "total_students",
+            "lessons_count",
+        ]
+        read_only_fields = fields
+
+    def get_lessons_count(self, obj) -> int:
+        return sum(
+            len([lesson for lesson in module.lessons.all() if lesson.is_published])
+            for module in obj.modules.all() if module.is_published
+        )
 
 
 class CourseStatusSerializer(serializers.Serializer):

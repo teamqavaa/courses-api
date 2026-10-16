@@ -60,6 +60,7 @@ class Command(BaseCommand):
         instructor_id = str(uuid.uuid4())
         instructor_email = "expert.instructor@example.com"
         instructor_roles = ["instructor", "admin"]
+        instructor_name = "Qavaa Ignite Experts"
 
         # Liens YouTube à distribuer sur les leçons
         youtube_links = [
@@ -78,6 +79,8 @@ class Command(BaseCommand):
                 "description": "In this comprehensive course, you will learn how to design a robust API using Django REST Framework and interface it with a dynamic React interface.",
                 "language": "english",
                 "level": "intermediate",
+                "prerequisites": "Solid JavaScript basics and a first contact with Python.",
+                "target_audience": "Developers who know the basics and want to ship complete web applications.",
                 "status": "published",
                 "price": Decimal("199.99"),
                 "discount_price": Decimal("99.99"),
@@ -133,6 +136,8 @@ class Command(BaseCommand):
                 "description": "Learn containerization, CI/CD pipelines, and orchestration with Docker and Kubernetes to ensure smooth enterprise-grade deployments.",
                 "language": "english",
                 "level": "advanced",
+                "prerequisites": "Comfortable with the Linux command line and Git; a web app you have already deployed.",
+                "target_audience": "Backend developers and ops engineers who want reliable, automated deployments.",
                 "status": "published",
                 "price": Decimal("249.99"),
                 "discount_price": Decimal("129.99"),
@@ -178,6 +183,8 @@ class Command(BaseCommand):
                 "description": "Dive deep into user experience research, wireframing, interactive prototyping, and modern design systems using Figma.",
                 "language": "english",
                 "level": "beginner",
+                "prerequisites": "No prior design experience needed: just a computer and a free Figma account.",
+                "target_audience": "Beginners, developers and product people who want to design clean interfaces.",
                 "status": "published",
                 "price": Decimal("149.99"),
                 "discount_price": Decimal("79.99"),
@@ -223,6 +230,8 @@ class Command(BaseCommand):
                 "description": "Discover proven growth loops, viral marketing tactics, SEO strategies, and conversion rate optimization (CRO) tailored for SaaS products.",
                 "language": "english",
                 "level": "intermediate",
+                "prerequisites": "A product or side project to grow; basic spreadsheet skills.",
+                "target_audience": "Founders, marketers and product managers of early-stage SaaS products.",
                 "status": "published",
                 "price": Decimal("179.99"),
                 "discount_price": Decimal("89.99"),
@@ -273,6 +282,9 @@ class Command(BaseCommand):
                     "user_id": instructor_id,
                     "user_email": instructor_email,
                     "user_roles": instructor_roles,
+                    "instructor_name": instructor_name,
+                    "prerequisites": course_item.get("prerequisites", ""),
+                    "target_audience": course_item.get("target_audience", ""),
                     "title": course_item["title"],
                     "subtitle": course_item["subtitle"],
                     "description": course_item["description"],

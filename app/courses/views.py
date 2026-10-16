@@ -1,4 +1,4 @@
-from django.db.models import ProtectedError, Q
+from django.db.models import Case, IntegerField, ProtectedError, Q, Value, When
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -11,11 +11,29 @@ from core.permissions import CanManageCourses, ensure_can_edit_course
 from core.sso import OptionalSSOAuthentication
 from courses.models import Course
 from enrollments.models import Enrollment
-from .serializers import CourseManageSerializer, CourseSerializer, CourseStatusSerializer
+from .serializers import CourseManageSerializer, CourseSearchSerializer, CourseSerializer, CourseStatusSerializer
 from core.utils import get_user_sub_from_request
 
 # Statuts qu'un instructeur peut donner à son propre cours (la publication est réservée aux admins)
 INSTRUCTOR_STATUSES = {'draft', 'review'}
+
+SEARCH_MIN_LENGTH = 2
+SEARCH_DEFAULT_LIMIT = 20
+SEARCH_MAX_LIMIT = 50
+
+
+def _search_filter(term):
+    """Un mot de la recherche : présent dans au moins un des champs publics du cours."""
+    return (
+        Q(title__icontains=term)
+        | Q(subtitle__icontains=term)
+        | Q(description__icontains=term)
+        | Q(instructor_name__icontains=term)
+        | Q(category__name__icontains=term)
+        | Q(tags__name__icontains=term)
+        | Q(modules__title__icontains=term, modules__is_published=True)
+        | Q(modules__lessons__title__icontains=term, modules__lessons__is_published=True)
+    )
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -69,7 +87,12 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         self._check_status_allowed(serializer.validated_data.get('status'))
-        serializer.save()
+        extra = {}
+        user = self.request.user
+        # Cours créés avant le champ instructor_name : complété quand le propriétaire le modifie
+        if not serializer.instance.instructor_name and serializer.instance.user_id == str(user.id):
+            extra['instructor_name'] = getattr(user, 'name', '') or ''
+        serializer.save(**extra)
 
     def destroy(self, request, *args, **kwargs):
         course = self.get_object()
@@ -109,6 +132,51 @@ class CourseViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(title__icontains=request.query_params['search'])
 
         return Response(CourseManageSerializer(queryset.order_by('-updated_at'), many=True).data)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('q', str, description="Mots recherchés (au moins 2 caractères)"),
+            OpenApiParameter('limit', int, description=f"Nombre de résultats (max {SEARCH_MAX_LIMIT})"),
+        ],
+        responses=CourseSearchSerializer(many=True),
+    )
+    @action(detail=False, methods=['get'], url_path='search', permission_classes=[])
+    def search(self, request):
+        """
+        GET /api/courses/search/?q=figma&limit=20 — recherche publique dans les cours publiés.
+        Chaque mot doit apparaître dans le titre, le sous-titre, la description, le formateur,
+        la catégorie, un tag, un module ou une leçon. Les correspondances dans le titre d'abord.
+        Réponse : {"query", "count", "results": [...]}.
+        """
+        query = ' '.join(request.query_params.get('q', '').split())
+        try:
+            limit = min(max(int(request.query_params.get('limit', SEARCH_DEFAULT_LIMIT)), 1), SEARCH_MAX_LIMIT)
+        except ValueError:
+            limit = SEARCH_DEFAULT_LIMIT
+        if len(query) < SEARCH_MIN_LENGTH:
+            return Response({'query': query, 'count': 0, 'results': []})
+
+        terms = query.split()[:8]
+        matching = Course.objects.filter(status='published')
+        for term in terms:
+            matching = matching.filter(_search_filter(term))
+
+        title_match = Q()
+        for term in terms:
+            title_match &= Q(title__icontains=term)
+        courses = (
+            Course.objects.filter(pk__in=matching.values('pk'))
+            .select_related('category')
+            .prefetch_related('modules__lessons')
+            .annotate(rank=Case(When(title_match, then=Value(0)), default=Value(1), output_field=IntegerField()))
+            .order_by('rank', '-total_students', 'title')
+        )
+        count = courses.count()
+        return Response({
+            'query': query,
+            'count': count,
+            'results': CourseSearchSerializer(courses[:limit], many=True).data,
+        })
 
     @extend_schema(request=CourseStatusSerializer, responses=CourseManageSerializer)
     @action(detail=True, methods=['post'], url_path='status')

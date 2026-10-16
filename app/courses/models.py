@@ -52,10 +52,16 @@ class Course(models.Model):
         verbose_name="Rôles Utilisateur"
     )
 
+    # Nom affiché du formateur, copié du claim "name" du token à la création du cours
+    instructor_name = models.CharField(max_length=255, blank=True, verbose_name="Nom du formateur")
+
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, blank=True)
     subtitle = models.CharField(max_length=255, blank=True)
     description = models.TextField()
+
+    prerequisites = models.TextField(blank=True, verbose_name="Prérequis")
+    target_audience = models.TextField(blank=True, verbose_name="Pour qui ?")
 
     language = models.CharField(max_length=50, choices=LANGUAGE_CHOICES, default="english")
     level = models.CharField(max_length=20, choices=LEVEL_CHOICES, default="all")

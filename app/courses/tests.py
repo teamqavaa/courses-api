@@ -200,3 +200,115 @@ class CourseManagementTests(TestCase):
         payload = {'course': str(self.published.id), 'title': 'x', 'order': 2}
         res = self.student.post('/api/modules/', payload, format='json')
         self.assertEqual(res.status_code, 403)
+
+
+@patch('core.sso._jwks_client.get_signing_key_from_jwt', return_value=FakeSigningKey())
+class CourseSearchTests(TestCase):
+    """GET /api/courses/search/?q= : recherche publique dans les cours publiés."""
+
+    def setUp(self):
+        self.design = Category.objects.create(name='Design & UI/UX', slug='design')
+        self.dev = Category.objects.create(name='Développement web', slug='dev')
+        self.figma = Course.objects.create(
+            category=self.design, title='Masterclass Figma', subtitle='Interfaces modernes',
+            description='Prototypage', price='10.00', user_id=INSTRUCTOR_ID, user_email='i@qavaa.com',
+            instructor_name='Amara Odili', status='published',
+        )
+        self.js = Course.objects.create(
+            category=self.dev, title='JavaScript moderne', description='Le DOM et fetch',
+            price='10.00', user_id=INSTRUCTOR_ID, user_email='i@qavaa.com', status='published',
+        )
+        module = Module.objects.create(course=self.js, title='Asynchrone', order=1)
+        Lesson.objects.create(module=module, title='Promesses et async/await', order=1)
+        self.hidden = Course.objects.create(
+            category=self.design, title='Figma brouillon', description='x', price='10.00',
+            user_id=INSTRUCTOR_ID, user_email='i@qavaa.com', status='draft',
+        )
+
+    def search(self, query, client=None):
+        return (client or APIClient()).get('/api/courses/search/', {'q': query})
+
+    def slugs(self, res):
+        return [c['slug'] for c in res.data['results']]
+
+    def test_recherche_par_titre_sans_les_brouillons(self, _):
+        res = self.search('figma')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(self.slugs(res), [self.figma.slug])
+        self.assertEqual(res.data['count'], 1)
+
+    def test_brouillon_invisible_meme_pour_son_instructeur(self, _):
+        res = self.search('figma', auth_client(INSTRUCTOR_ID, ['instructor']))
+        self.assertEqual(self.slugs(res), [self.figma.slug])
+
+    def test_recherche_dans_categorie_formateur_et_lecons(self, _):
+        self.assertEqual(self.slugs(self.search('développement')), [self.js.slug])
+        self.assertEqual(self.slugs(self.search('odili')), [self.figma.slug])
+        self.assertEqual(self.slugs(self.search('async')), [self.js.slug])
+
+    def test_plusieurs_mots_tous_requis(self, _):
+        self.assertEqual(self.slugs(self.search('javascript dom')), [self.js.slug])
+        self.assertEqual(self.slugs(self.search('javascript figma')), [])
+
+    def test_titre_classe_avant_description(self, _):
+        self.js.description = 'Exporter depuis Figma'
+        self.js.save()
+        self.assertEqual(self.slugs(self.search('figma')), [self.figma.slug, self.js.slug])
+
+    def test_requete_vide_ou_trop_courte(self, _):
+        for query in ('', ' ', 'a'):
+            res = self.search(query)
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.data['results'], [])
+
+    def test_resultat_leger_sans_donnees_personnelles(self, _):
+        result = self.search('figma').data['results'][0]
+        self.assertEqual(result['instructor_name'], 'Amara Odili')
+        self.assertEqual(result['category_details']['name'], 'Design & UI/UX')
+        self.assertNotIn('user_email', result)
+
+    def test_limite(self, _):
+        res = APIClient().get('/api/courses/search/', {'q': 'oo', 'limit': 1})
+        self.assertEqual(res.status_code, 200)
+        self.assertLessEqual(len(res.data['results']), 1)
+
+
+@patch('core.sso._jwks_client.get_signing_key_from_jwt', return_value=FakeSigningKey())
+class CourseDetailPublicDataTests(TestCase):
+    """Données de la page détail : formateur, prérequis, public cible ; email masqué au public."""
+
+    def setUp(self):
+        self.category = Category.objects.create(name='Design', slug='design')
+        self.instructor = auth_client(INSTRUCTOR_ID, ['instructor'], name='Amara Odili')
+
+    def test_nom_du_formateur_enregistre_a_la_creation(self, _):
+        res = self.instructor.post('/api/courses/', {
+            'title': 'Cours', 'description': 'd', 'price': '5.00', 'category': str(self.category.id),
+            'prerequisites': 'Bases de HTML', 'target_audience': 'Débutants motivés',
+        }, format='json')
+        self.assertEqual(res.status_code, 201, res.data)
+        course = Course.objects.get(slug=res.data['slug'])
+        self.assertEqual(course.instructor_name, 'Amara Odili')
+        self.assertEqual(course.prerequisites, 'Bases de HTML')
+        self.assertEqual(course.target_audience, 'Débutants motivés')
+
+    def test_instructor_name_non_modifiable(self, _):
+        course = Course.objects.create(
+            category=self.category, title='C', description='d', price='5.00',
+            user_id=INSTRUCTOR_ID, user_email='i@qavaa.com', instructor_name='Amara Odili',
+        )
+        self.instructor.patch(f'/api/courses/{course.slug}/', {'instructor_name': 'Usurpateur'}, format='json')
+        course.refresh_from_db()
+        self.assertEqual(course.instructor_name, 'Amara Odili')
+
+    def test_email_et_roles_du_formateur_masques_au_public(self, _):
+        course = Course.objects.create(
+            category=self.category, title='Public', description='d', price='5.00', status='published',
+            user_id=INSTRUCTOR_ID, user_email='i@qavaa.com', user_roles=['instructor'], instructor_name='Amara',
+        )
+        public = APIClient().get(f'/api/courses/{course.slug}/').data
+        self.assertNotIn('user_email', public)
+        self.assertNotIn('user_roles', public)
+        self.assertEqual(public['instructor_name'], 'Amara')
+        owner = self.instructor.get(f'/api/courses/{course.slug}/').data
+        self.assertEqual(owner['user_email'], 'i@qavaa.com')

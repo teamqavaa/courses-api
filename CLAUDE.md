@@ -25,11 +25,19 @@ Statuts d'un cours : `draft` → `review` (soumis par l'instructeur) → `publis
 | Route | Règle |
 |---|---|
 | `GET /api/courses/`, `GET /api/courses/<slug>/` | public : cours `published` uniquement ; un instructeur voit aussi les siens, un admin tout |
+| `GET /api/courses/search/?q=&limit=` | public : **recherche** dans les cours `published` (jamais de brouillon, même pour son auteur). Chaque mot doit apparaître dans le titre, sous-titre, description, `instructor_name`, catégorie, tag, module ou leçon publiés ; titre d'abord. `q` < 2 caractères → aucun résultat ; `limit` 20 par défaut, 50 max. Réponse `{query, count, results: [{id, slug, title, subtitle, level, language, thumbnail, instructor_name, category_details, average_rating, total_students, lessons_count}]}` |
 | `GET /api/courses/manage/?status=&search=` | instructeur : ses cours ; admin : tous (403 pour un étudiant) — compteurs `modules_count`, `lessons_count` |
 | `POST /api/courses/` | instructeur ou admin ; le cours appartient au `sub` du token (`user_id`) ; un instructeur ne peut pas créer en `published` (403) |
 | `PATCH` / `DELETE /api/courses/<slug>/` | admin, ou instructeur propriétaire ; `DELETE` d'un cours déjà commandé → 409 |
 | `POST /api/courses/<slug>/status/` `{status}` | propriétaire : `draft` ↔ `review` ; admin : tous les statuts |
 | `POST/PATCH/DELETE /api/modules/`, `/api/lessons/`, `/api/videos/` | admin, ou instructeur propriétaire du cours parent (`CanManageCourses`, `ensure_can_edit_course`) |
+
+Champs de la page détail (front `/courses/<slug>`) :
+- `instructor_name` : nom affiché du formateur, copié du claim `name` du token à la création (lecture
+  seule ; complété à la première modification par le propriétaire pour les anciens cours).
+- `prerequisites`, `target_audience` : textes libres saisis dans « Manage courses ».
+- `user_email` et `user_roles` ne sont renvoyés qu'au propriétaire du cours et aux admins
+  (données personnelles du formateur masquées au public).
 
 Pour protéger une nouvelle ressource rattachée à un cours : `permission_classes = [CanManageCourses]`
 et `ensure_can_edit_course(request.user, course_of(objet))` dans `perform_create` / `perform_update`.
