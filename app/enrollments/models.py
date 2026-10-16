@@ -68,3 +68,52 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"Utilisateur {self.user_id} - {self.course.title} ({self.get_status_display()})"
+
+
+class LessonProgress(models.Model):
+    """
+    Progression de l'utilisateur sur une leçon d'un cours auquel il est inscrit.
+    Sert à calculer Enrollment.progress_percentage et les statistiques du dashboard.
+    """
+    enrollment = models.ForeignKey(
+        Enrollment,
+        on_delete=models.CASCADE,
+        related_name='lesson_progress',
+        verbose_name="Inscription"
+    )
+    lesson = models.ForeignKey(
+        'lessons.Lesson',
+        on_delete=models.CASCADE,
+        related_name='progress_entries',
+        verbose_name="Leçon"
+    )
+    position_seconds = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Position de lecture (secondes)"
+    )
+    is_completed = models.BooleanField(
+        default=False,
+        verbose_name="Leçon terminée"
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Date de fin de la leçon"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['enrollment', 'lesson'],
+                name='unique_enrollment_lesson_progress'
+            )
+        ]
+        ordering = ['-updated_at']
+        verbose_name = "Progression d'une leçon"
+        verbose_name_plural = "Progressions des leçons"
+
+    def __str__(self):
+        state = "terminée" if self.is_completed else f"{self.position_seconds}s"
+        return f"{self.enrollment} - {self.lesson.title} ({state})"
