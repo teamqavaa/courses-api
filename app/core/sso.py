@@ -15,7 +15,7 @@ SSO_JWKS_URL = os.getenv('SSO_JWKS_URL', f'{SSO_ISSUER}/o/.well-known/jwks.json'
 
 _jwks_client = jwt.PyJWKClient(SSO_JWKS_URL, cache_keys=True, lifespan=3600, timeout=5)
 
-ADMIN_ROLES = {'admin', 'superadmin'}
+ADMIN_ROLES = {'admin', 'superadmin', 'superuser'}
 
 
 def _signing_key(token):
@@ -71,7 +71,12 @@ class SSOUser:
 
     @property
     def is_admin(self):
-        return bool(ADMIN_ROLES.intersection(self.roles))
+        """Rôle admin/superadmin, ou compte is_staff / is_superuser dans le SSO."""
+        return (
+            bool(ADMIN_ROLES.intersection(self.roles))
+            or self.claims.get('is_staff') is True
+            or self.claims.get('is_superuser') is True
+        )
 
     @property
     def is_instructor(self):
@@ -104,3 +109,17 @@ class SSOAuthentication(authentication.BaseAuthentication):
 
     def authenticate_header(self, request):
         return 'Bearer'
+
+
+class OptionalSSOAuthentication(SSOAuthentication):
+    """
+    Variante pour les ressources publiques (catalogue) : un token absent, expiré ou
+    invalide rend la requête anonyme au lieu de la rejeter. Les écritures restent
+    protégées par les permissions de la vue.
+    """
+
+    def authenticate(self, request):
+        try:
+            return super().authenticate(request)
+        except exceptions.AuthenticationFailed:
+            return None

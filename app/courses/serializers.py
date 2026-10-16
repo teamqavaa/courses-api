@@ -197,3 +197,44 @@ class CourseSerializer(serializers.ModelSerializer):
         self._handle_file_upload(validated_data, "promo_video_url", "videos")
 
         return super().update(instance, validated_data)
+
+
+class CourseManageSerializer(serializers.ModelSerializer):
+    """Ligne de la liste de gestion des cours (instructeur / administrateur)."""
+    category_details = CategorySerializer(source="category", read_only=True)
+    modules_count = serializers.SerializerMethodField()
+    lessons_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Course
+        fields = [
+            "id",
+            "slug",
+            "title",
+            "subtitle",
+            "status",
+            "level",
+            "language",
+            "price",
+            "discount_price",
+            "thumbnail",
+            "category_details",
+            "user_id",
+            "user_email",
+            "modules_count",
+            "lessons_count",
+            "total_students",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_modules_count(self, obj) -> int:
+        return len(obj.modules.all())
+
+    def get_lessons_count(self, obj) -> int:
+        return sum(len(module.lessons.all()) for module in obj.modules.all())
+
+
+class CourseStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Course.STATUS_CHOICES)

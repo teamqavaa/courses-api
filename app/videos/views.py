@@ -4,27 +4,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
+from core.permissions import CanManageCourses, course_of, ensure_can_edit_course
+
 from .models import Video
 from .serializers import VideoSerializer, VideoReadPublicSerializer
-
-
-class HasSSORole(permissions.BasePermission):
-    """
-    Permission basée sur le rôle SSO transmis dans la requête (request.user).
-    - Lecture : Utilisateurs authentifiés.
-    - Écriture (POST, PUT, PATCH, DELETE) : Réservée aux rôles 'instructor' ou 'admin'.
-    """
-    ALLOWED_WRITE_ROLES = {'instructor', 'admin', 'staff'}
-
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-        if not request.user or not request.user.is_authenticated:
-            return False
-
-        user_role = getattr(request.user, 'role', None)
-        return user_role in self.ALLOWED_WRITE_ROLES or getattr(request.user, 'is_staff', False)
 
 
 class VideoViewSet(viewsets.ModelViewSet):
@@ -38,12 +21,22 @@ class VideoViewSet(viewsets.ModelViewSet):
     - DELETE /api/videos/{uuid}/      : Supprime une vidéo (Instructor / Admin SSO)
     """
 
-    permission_classes = [permissions.IsAuthenticated, HasSSORole]
+    permission_classes = [permissions.IsAuthenticated, CanManageCourses]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['lesson', 'provider']
 
     def get_queryset(self):
         return Video.objects.select_related('lesson').all()
+
+    def perform_create(self, serializer):
+        # Un instructeur n'ajoute du contenu qu'à ses propres cours
+        ensure_can_edit_course(self.request.user, course_of(serializer.validated_data.get('lesson')))
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if serializer.validated_data.get('lesson'):
+            ensure_can_edit_course(self.request.user, course_of(serializer.validated_data.get('lesson')))
+        serializer.save()
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve', 'by_lesson']:

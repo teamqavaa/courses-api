@@ -55,4 +55,6 @@ class ModuleCreateUpdateSerializer(serializers.ModelSerializer):
             'is_free',
         ]
         read_only_fields = ['id']  # noqa: RUF012
+        # Relation inverse : les ressources se rattachent depuis /api/resources/
+        extra_kwargs = {'resources': {'required': False}}  # noqa: RUF012
 

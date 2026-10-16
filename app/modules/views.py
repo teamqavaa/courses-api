@@ -3,35 +3,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
+from core.permissions import CanManageCourses, course_of, ensure_can_edit_course
+
 from modules.models import Module
 from modules.serializers import ModuleDetailSerializer, ModuleCreateUpdateSerializer  # 👈 Nom corrigé ici
-
-
-class HasSSORole(permissions.BasePermission):
-    """
-    Permission basée sur le rôle SSO transmis dans la requête (request.user).
-    - Lecture (GET, HEAD, OPTIONS) : Ouverte à tous les utilisateurs authentifiés.
-    - Écriture (POST, PUT, PATCH, DELETE) : Réservée aux rôles 'instructor' ou 'admin'.
-    """
-
-    ALLOWED_WRITE_ROLES = {'instructor', 'admin', 'staff'}
-
-    def has_permission(self, request, view):
-        # Pour les méthodes de lecture, on autorise tout utilisateur authentifié
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-        if not request.user or not request.user.is_authenticated:
-            return False
-
-        # On extrait le rôle rattaché à l'utilisateur (issu du Token SSO / Claim JWT)
-        user_role = getattr(request.user, 'role', None)
-
-        # Vérification si le rôle correspond ou si l'attribut Django standard is_staff est vrai
-        if user_role in self.ALLOWED_WRITE_ROLES or getattr(request.user, 'is_staff', False):
-            return True
-
-        return False
 
 
 class ModuleViewSet(viewsets.ModelViewSet):
@@ -44,7 +19,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
     - PUT/PATCH /api/modules/{uuid}/ : Modifie un module (Réservé rôle Instructor / Admin SSO)
     - DELETE /api/modules/{uuid}/    : Supprime un module (Réservé rôle Instructor / Admin SSO)
     """
-    permission_classes = [permissions.IsAuthenticated, HasSSORole]
+    permission_classes = [permissions.IsAuthenticated, CanManageCourses]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['course', 'is_published', 'is_free']
 
@@ -57,16 +32,20 @@ class ModuleViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Module.objects.select_related('course').all()
 
-        user_role = getattr(user, 'role', None)
-        is_admin_or_instructor = (
-            user_role in {'instructor', 'admin', 'staff'} or
-            getattr(user, 'is_staff', False)
-        )
-
-        if is_admin_or_instructor:
+        if getattr(user, 'is_instructor', False):
             return queryset
 
         return queryset.filter(is_published=True)
+
+    def perform_create(self, serializer):
+        # Un instructeur n'ajoute du contenu qu'à ses propres cours
+        ensure_can_edit_course(self.request.user, course_of(serializer.validated_data.get('course')))
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if serializer.validated_data.get('course'):
+            ensure_can_edit_course(self.request.user, course_of(serializer.validated_data.get('course')))
+        serializer.save()
 
     def get_serializer_class(self):
         """

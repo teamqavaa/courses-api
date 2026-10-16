@@ -1,6 +1,7 @@
 import os
 from rest_framework import permissions
 import requests
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 
 
@@ -111,3 +112,49 @@ class SSOOAuth2Authentication(BaseAuthentication):
             print("Erreur d'introspection SSO:", e)
 
         raise AuthenticationFailed("Token invalide ou expiré")
+
+
+# ---------------------------------------------------------------------------
+# Gestion des cours (SSOUser, core/sso.py)
+# ---------------------------------------------------------------------------
+
+def course_of(obj):
+    """Cours auquel appartient un objet du programme (Course, Module, Lesson, Video)."""
+    # Video -> lesson -> module -> course : seul le cours porte le propriétaire (user_id)
+    while not hasattr(obj, 'user_id'):
+        obj = getattr(obj, 'course', None) or getattr(obj, 'module', None) or obj.lesson
+    return obj
+
+
+def can_edit_course(user, course):
+    """Un administrateur modifie tous les cours ; un instructeur uniquement les siens."""
+    if not (user and user.is_authenticated):
+        return False
+    if getattr(user, 'is_admin', False):
+        return True
+    return getattr(user, 'is_instructor', False) and str(course.user_id) == str(user.id)
+
+
+def ensure_can_edit_course(user, course):
+    if not can_edit_course(user, course):
+        raise PermissionDenied("Vous ne pouvez modifier que vos propres cours.")
+
+
+class CanManageCourses(BasePermission):
+    """
+    - Lecture : ouverte (le filtrage par statut est fait dans les vues).
+    - Création : instructeur ou administrateur.
+    - Modification / suppression : administrateur, ou instructeur propriétaire du cours.
+    """
+    message = "Action réservée aux instructeurs (sur leurs cours) et aux administrateurs."
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        user = request.user
+        return bool(user and user.is_authenticated and getattr(user, 'is_instructor', False))
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return can_edit_course(request.user, course_of(obj))

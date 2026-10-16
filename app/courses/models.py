@@ -17,6 +17,7 @@ class Course(models.Model):
 
     STATUS_CHOICES = [
         ("draft", "Draft"),
+        ("review", "Pending review"),  # soumis par l'instructeur, à valider par un admin
         ("published", "Published"),
     ]
 

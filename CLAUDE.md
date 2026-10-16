@@ -11,6 +11,29 @@ cookie `access_token`. `core/sso.py` vérifie la signature via le JWKS du SSO (`
 `SSO_JWKS_URL`) ; `SSOAuthentication` fournit `request.user` (`SSOUser` : `id` = `sub`, `roles`).
 Les utilisateurs ne sont pas stockés ici : les modèles gardent le `sub` (`user_id`, CharField).
 
+Droits (`SSOUser`) :
+- `is_admin` : rôle `admin`, `superadmin` ou `superuser`, **ou** claim `is_staff` / `is_superuser` à `true` ;
+- `is_instructor` : rôle `instructor` (ou admin).
+
+`OptionalSSOAuthentication` (catalogue) : un token absent, expiré ou invalide rend la requête
+anonyme au lieu de la rejeter ; les écritures restent bloquées par les permissions.
+
+## Gestion des cours (`courses/`, `core/permissions.py`)
+
+Statuts d'un cours : `draft` → `review` (soumis par l'instructeur) → `published` (validé par un admin).
+
+| Route | Règle |
+|---|---|
+| `GET /api/courses/`, `GET /api/courses/<slug>/` | public : cours `published` uniquement ; un instructeur voit aussi les siens, un admin tout |
+| `GET /api/courses/manage/?status=&search=` | instructeur : ses cours ; admin : tous (403 pour un étudiant) — compteurs `modules_count`, `lessons_count` |
+| `POST /api/courses/` | instructeur ou admin ; le cours appartient au `sub` du token (`user_id`) ; un instructeur ne peut pas créer en `published` (403) |
+| `PATCH` / `DELETE /api/courses/<slug>/` | admin, ou instructeur propriétaire ; `DELETE` d'un cours déjà commandé → 409 |
+| `POST /api/courses/<slug>/status/` `{status}` | propriétaire : `draft` ↔ `review` ; admin : tous les statuts |
+| `POST/PATCH/DELETE /api/modules/`, `/api/lessons/`, `/api/videos/` | admin, ou instructeur propriétaire du cours parent (`CanManageCourses`, `ensure_can_edit_course`) |
+
+Pour protéger une nouvelle ressource rattachée à un cours : `permission_classes = [CanManageCourses]`
+et `ensure_can_edit_course(request.user, course_of(objet))` dans `perform_create` / `perform_update`.
+
 ## Inscriptions et progression (`enrollments/`)
 
 Modèles :
@@ -41,6 +64,7 @@ Endpoints (authentification SSO obligatoire, uniquement les inscriptions du `sub
 docker compose up                                                   # API sur :8080
 docker compose run --rm app sh -c "python manage.py test"           # tests
 docker compose run --rm app sh -c "python manage.py test enrollments"
+docker compose run --rm app sh -c "python manage.py test courses"      # gestion des cours et droits
 docker compose run --rm app sh -c "python manage.py makemigrations"
 ```
 

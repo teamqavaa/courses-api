@@ -4,28 +4,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
+from core.permissions import CanManageCourses, course_of, ensure_can_edit_course
 from lessons.models import Lesson
 from lessons.serializers import LessonDetailSerializer, LessonCreateUpdateSerializer
-
-
-class HasSSORole(permissions.BasePermission):
-    """
-    Permission basée sur le rôle SSO transmis dans la requête (request.user).
-    - Lecture (GET, HEAD, OPTIONS) : Ouverte à tout utilisateur authentifié.
-    - Écriture (POST, PUT, PATCH, DELETE) : Réservée aux rôles 'instructor' ou 'admin'.
-    """
-
-    ALLOWED_WRITE_ROLES = {'instructor', 'admin', 'staff'}
-
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-        if not request.user or not request.user.is_authenticated:
-            return False
-
-        user_role = getattr(request.user, 'role', None)
-        return user_role in self.ALLOWED_WRITE_ROLES or getattr(request.user, 'is_staff', False)
 
 
 class LessonViewSet(viewsets.ModelViewSet):
@@ -39,7 +20,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     - DELETE /api/lessons/{uuid}/    : Supprime une leçon (Réservé rôle Instructor / Admin SSO)
     """
 
-    permission_classes = [permissions.IsAuthenticated, HasSSORole]
+    permission_classes = [permissions.IsAuthenticated, CanManageCourses]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['module', 'lesson_type', 'is_published', 'is_preview']
 
@@ -52,16 +33,20 @@ class LessonViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Lesson.objects.select_related('module').prefetch_related('video').all()
 
-        user_role = getattr(user, 'role', None)
-        is_admin_or_instructor = (
-            user_role in {'instructor', 'admin', 'staff'} or
-            getattr(user, 'is_staff', False)
-        )
-
-        if is_admin_or_instructor:
+        if getattr(user, 'is_instructor', False):
             return queryset
 
         return queryset.filter(is_published=True)
+
+    def perform_create(self, serializer):
+        # Un instructeur n'ajoute du contenu qu'à ses propres cours
+        ensure_can_edit_course(self.request.user, course_of(serializer.validated_data.get('module')))
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if serializer.validated_data.get('module'):
+            ensure_can_edit_course(self.request.user, course_of(serializer.validated_data.get('module')))
+        serializer.save()
 
     def get_serializer_class(self):
         """
