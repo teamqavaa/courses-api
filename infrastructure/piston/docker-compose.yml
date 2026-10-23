@@ -1,0 +1,26 @@
+name: contents-lab-piston
+
+services:
+  piston:
+    image: ${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}
+    container_name: contents-lab-piston
+    restart: unless-stopped
+    privileged: true
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
+    ports:
+      - "${PISTON_HOST_PORT:-2000}:2000"
+    environment:
+      PISTON_DISABLE_NETWORKING: ${PISTON_DISABLE_NETWORKING:-false}
+      PISTON_COMPILE_TIMEOUT: 30000
+      PISTON_COMPILE_CPU_TIME: 30000
+      PISTON_RUN_TIMEOUT: 10000
+      PISTON_RUN_CPU_TIME: 10000
+    volumes:
+      - piston_data:/piston/data
+      - piston_packages:/piston/packages
+
+volumes:
+  piston_data:
+  piston_packages:

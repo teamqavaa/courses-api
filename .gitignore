@@ -12,3 +12,9 @@ venv/
 # Django
 app/staticfiles/
 app/media/
+
+# Local secrets and dev databases
+.sso-jwt-secret
+app/dev.db
+app/test.db
+app/dev_settings.py

@@ -51,6 +51,7 @@ urlpatterns = [
     path('api/', include('learning_points.urls')),
     path('api/', include('resources.urls')),
     path('api/', include('payment_providers.urls')),
+    path('api/', include('lab.urls')),
 
 ]
 

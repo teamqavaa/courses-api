@@ -79,5 +79,20 @@ docker compose run --rm app sh -c "python manage.py makemigrations"
 Tests d'API authentifiés : réutiliser `make_token()` / `FakeSigningKey` de `core/tests.py` et patcher
 `core.sso._jwks_client.get_signing_key_from_jwt`.
 
+## Exécution de code locale (Piston)
+
+Les endpoints `/api/lab/` délèguent l'exécution à Piston via `PISTON_URL`. Le stack local
+est autonome dans `infrastructure/piston/` (aucune dépendance à Digital-Readiness-Lab) :
+
+```bash
+docker compose -f infrastructure/piston/docker-compose.yml up -d
+sh infrastructure/piston/install-runtimes.sh
+```
+
+Runtimes requis : Python `3.12.0`, PHP `8.2.3`, TypeScript `5.0.3`. Voir
+`infrastructure/piston/README.md` pour les ports et le dépannage. Sans Piston joignable,
+l'endpoint d'exécution renvoie `502`.
+
 Déploiement (`.github/workflows/deploy.yml`, push sur `main`) : build → job Cloud Run
-`migrate` + seeds → service Cloud Run.
+`migrate` + seeds → service Cloud Run. La production doit fournir un Piston privé via
+`PISTON_URL` ; Cloud Run n'héberge pas Piston.
