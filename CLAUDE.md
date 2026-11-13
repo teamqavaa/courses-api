@@ -42,6 +42,23 @@ Champs de la page détail (front `/courses/<slug>`) :
 Pour protéger une nouvelle ressource rattachée à un cours : `permission_classes = [CanManageCourses]`
 et `ensure_can_edit_course(request.user, course_of(objet))` dans `perform_create` / `perform_update`.
 
+## Gestion des labs (`lab/views/labs.py`, `core/permissions.py`)
+
+Mêmes droits que les cours : `draft` → `review` (soumis par l'instructeur) → `published` (validé par un admin).
+Auteur d'un lab : `user_id` (`sub`), `user_email`, `author_name` ; vide pour les labs importés du catalogue
+(gérables par les admins seulement).
+
+| Route | Règle |
+|---|---|
+| `GET /api/labs/`, `GET /api/labs/<slug ou uuid>/` | labs `published` ; un instructeur voit aussi les siens, un admin tout (`visible_labs`). `user_email` renvoyé à l'auteur et aux admins seulement |
+| `GET /api/labs/manage/?status=&search=` | instructeur : ses labs ; admin : tous (403 pour un étudiant) ; `objectives_count` |
+| `POST /api/labs/` | instructeur ou admin ; un instructeur ne crée pas en `published` (403) |
+| `PATCH` / `DELETE /api/labs/<ref>/` | admin, ou instructeur auteur. `objectives` (facultatif) remplace les étapes : `id` connu = mise à jour, sans `id` = création, absente = supprimée. `DELETE` par un instructeur d'un lab commencé par des apprenants → 409 |
+| `POST /api/labs/<ref>/status/` `{status}` | auteur : `draft` ↔ `review` ; admin : tous |
+| `/api/sessions/<uuid>/…` | même visibilité : l'auteur et les admins peuvent pratiquer un brouillon |
+
+`manage` est un slug réservé (`lab/slugs.py`). `/api/skills/<slug>/labs/` reste limité aux labs publiés.
+
 ## Inscriptions et progression (`enrollments/`)
 
 Modèles :

@@ -6,8 +6,10 @@ from .views import (
     heartbeat_session,
     lab_detail,
     lab_list,
+    lab_manage,
     lab_session,
     lab_stats,
+    lab_status,
     progress_detail,
     progress_list,
     reset_session,
@@ -19,7 +21,10 @@ from .views import (
 
 urlpatterns = [
     path('labs/', lab_list, name='lab-list'),
+    # Avant labs/<lab_ref>/ : "manage" est un slug réservé (lab/slugs.py)
+    path('labs/manage/', lab_manage, name='lab-manage'),
     path('labs/<str:lab_ref>/', lab_detail, name='lab-detail'),
+    path('labs/<str:lab_ref>/status/', lab_status, name='lab-status'),
     path('skills/', skill_list, name='skill-list'),
     path('skills/<slug:slug>/', skill_detail, name='skill-detail'),
     path('skills/<slug:slug>/labs/', skill_labs, name='skill-labs'),

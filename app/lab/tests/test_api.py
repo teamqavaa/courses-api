@@ -11,6 +11,8 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from core.sso import SSOUser
+
 from lab.models import (
     Lab,
     LabObjective,
@@ -99,6 +101,129 @@ class LabCatalogTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data[0]['lab_count'], 1)
         self.assertEqual(response.data[0]['title'], 'Lists')
+
+
+def sso_user(user_id='sso-user-1', roles=('student',), **claims):
+    """Utilisateur SSO tel que construit depuis le token (core/sso.py)."""
+    return SSOUser({'sub': user_id, 'email': f'{user_id}@qavaa.com', 'name': user_id, 'roles': list(roles), **claims})
+
+
+class LabManagementTests(APITestCase):
+    """Droits sur les labs : étudiant (lecture), instructeur (ses labs), admin / is_staff / is_superuser (tous)."""
+
+    def setUp(self):
+        self.student = sso_user('student-1')
+        self.instructor = sso_user('instructor-1', roles=['instructor'])
+        self.other_instructor = sso_user('instructor-2', roles=['instructor'])
+        self.published = Lab.objects.create(title='Public lab', status=Lab.Status.PUBLISHED)
+        self.own_draft = Lab.objects.create(title='Own draft', user_id='instructor-1')
+        self.other_draft = Lab.objects.create(title='Other draft', user_id='instructor-2')
+        LabObjective.objects.create(lab=self.own_draft, order=1, title='Step 1', content='Do it')
+
+    def titles(self, response):
+        return sorted(lab['title'] for lab in response.data)
+
+    def test_admin_variants_see_every_lab(self):
+        for admin in (
+            sso_user('admin-1', roles=['admin']),
+            sso_user('admin-2', roles=['superuser']),
+            sso_user('staff-1', is_staff=True),
+            sso_user('root-1', is_superuser=True),
+        ):
+            self.client.force_authenticate(user=admin)
+            self.assertEqual(
+                self.titles(self.client.get('/api/labs/')),
+                ['Other draft', 'Own draft', 'Public lab'],
+            )
+            self.assertEqual(len(self.client.get('/api/labs/manage/').data), 3)
+            detail = self.client.get(f'/api/labs/{self.other_draft.slug}/')
+            self.assertEqual(detail.status_code, 200)
+            self.assertIn('user_email', detail.data)
+
+    def test_student_sees_published_labs_only(self):
+        self.client.force_authenticate(user=self.student)
+        self.assertEqual(self.titles(self.client.get('/api/labs/')), ['Public lab'])
+        self.assertNotIn('user_email', self.client.get(f'/api/labs/{self.published.slug}/').data)
+        self.assertEqual(self.client.get(f'/api/labs/{self.own_draft.slug}/').status_code, 404)
+        self.assertEqual(self.client.get('/api/labs/manage/').status_code, 403)
+        self.assertEqual(self.client.post('/api/labs/', {'title': 'Nope'}, format='json').status_code, 403)
+
+    def test_anonymous_cannot_write(self):
+        self.assertEqual(self.client.post('/api/labs/', {'title': 'Nope'}, format='json').status_code, 401)
+        response = self.client.patch(f'/api/labs/{self.published.slug}/', {'title': 'X'}, format='json')
+        self.assertEqual(response.status_code, 401)
+
+    def test_instructor_sees_and_manages_only_own_labs(self):
+        self.client.force_authenticate(user=self.instructor)
+        self.assertEqual(self.titles(self.client.get('/api/labs/')), ['Own draft', 'Public lab'])
+        self.assertEqual(self.titles(self.client.get('/api/labs/manage/')), ['Own draft'])
+        self.assertEqual(self.client.get(f'/api/labs/{self.other_draft.slug}/').status_code, 404)
+        response = self.client.patch(f'/api/labs/{self.published.slug}/', {'title': 'Hijack'}, format='json')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.client.delete(f'/api/labs/{self.published.slug}/').status_code, 403)
+
+    def test_instructor_creates_lab_with_steps(self):
+        self.client.force_authenticate(user=self.instructor)
+        skill = Skill.objects.create(title='Loops', slug='loops')
+        response = self.client.post('/api/labs/', {
+            'title': 'Manage',
+            'language': 'php',
+            'skills': [str(skill.id)],
+            'objectives': [
+                {'title': 'First', 'content': 'One'},
+                {'title': 'Second', 'content': 'Two', 'hint': 'Look', 'starter_code': '<?php'},
+            ],
+        }, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['user_id'], 'instructor-1')
+        self.assertEqual(response.data['status'], 'draft')
+        self.assertEqual(response.data['slug'], 'manage-2')  # "manage" est réservé
+        self.assertEqual(response.data['skill_slugs'], ['loops'])
+        self.assertEqual([o['order'] for o in response.data['objectives']], [1, 2])
+
+    def test_instructor_cannot_publish(self):
+        self.client.force_authenticate(user=self.instructor)
+        response = self.client.post('/api/labs/', {'title': 'X', 'status': 'published'}, format='json')
+        self.assertEqual(response.status_code, 403)
+        url = f'/api/labs/{self.own_draft.slug}/status/'
+        self.assertEqual(self.client.post(url, {'status': 'review'}, format='json').status_code, 200)
+        self.assertEqual(self.client.post(url, {'status': 'published'}, format='json').status_code, 403)
+
+    def test_update_syncs_objectives(self):
+        self.client.force_authenticate(user=self.instructor)
+        step = self.own_draft.objectives.get()
+        response = self.client.patch(f'/api/labs/{self.own_draft.slug}/', {
+            'title': 'Renamed',
+            'objectives': [
+                {'title': 'New first', 'content': 'A'},
+                {'id': str(step.id), 'title': 'Step 1 edited', 'content': 'B'},
+            ],
+        }, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['title'], 'Renamed')
+        self.assertEqual(response.data['slug'], 'own-draft')  # le slug ne change pas
+        objectives = list(self.own_draft.objectives.order_by('order'))
+        self.assertEqual([o.title for o in objectives], ['New first', 'Step 1 edited'])
+        self.assertEqual(objectives[1].id, step.id)
+
+    def test_admin_publishes_and_deletes_any_lab(self):
+        self.client.force_authenticate(user=sso_user('staff-1', is_staff=True))
+        url = f'/api/labs/{self.other_draft.slug}/'
+        response = self.client.post(f'{url}status/', {'status': 'published'}, format='json')
+        self.assertEqual(response.data['status'], 'published')
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertFalse(Lab.objects.filter(pk=self.other_draft.pk).exists())
+
+    def test_instructor_cannot_delete_a_lab_learners_started(self):
+        LabSession.objects.create(user_id='student-1', lab=self.own_draft)
+        self.client.force_authenticate(user=self.instructor)
+        self.assertEqual(self.client.delete(f'/api/labs/{self.own_draft.slug}/').status_code, 409)
+
+    def test_owner_can_practise_own_draft(self):
+        self.client.force_authenticate(user=self.instructor)
+        self.assertEqual(self.client.get(f'/api/sessions/{self.own_draft.id}/').status_code, 200)
+        self.client.force_authenticate(user=self.student)
+        self.assertEqual(self.client.get(f'/api/sessions/{self.own_draft.id}/').status_code, 404)
 
 
 class LabSessionTests(APITestCase):

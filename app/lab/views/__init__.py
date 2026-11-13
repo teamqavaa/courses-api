@@ -1,5 +1,5 @@
 from .execution import execute_code
-from .labs import lab_detail, lab_list
+from .labs import lab_detail, lab_list, lab_manage, lab_status
 from .progress import progress_detail, progress_list
 from .sessions import (
     complete_session,
@@ -17,8 +17,10 @@ __all__ = [
     'heartbeat_session',
     'lab_detail',
     'lab_list',
+    'lab_manage',
     'lab_session',
     'lab_stats',
+    'lab_status',
     'progress_detail',
     'progress_list',
     'reset_session',

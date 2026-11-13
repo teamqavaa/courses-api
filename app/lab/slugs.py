@@ -2,6 +2,8 @@ from django.utils.text import slugify
 
 SLUG_MAX_LENGTH = 255
 FALLBACK_SLUG = 'lab'
+# Segments d'URL de /api/labs/ qui ne peuvent pas servir de slug (ex. /api/labs/manage/)
+RESERVED_SLUGS = {'manage'}
 
 
 def make_unique_slug(title, used_slugs):

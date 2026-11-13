@@ -158,3 +158,27 @@ class CanManageCourses(BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return can_edit_course(request.user, course_of(obj))
+
+
+# ---------------------------------------------------------------------------
+# Gestion des labs (lab/, même logique que les cours)
+# ---------------------------------------------------------------------------
+
+def can_edit_lab(user, lab):
+    """Un administrateur modifie tous les labs ; un instructeur uniquement les siens."""
+    if not (user and user.is_authenticated):
+        return False
+    if getattr(user, 'is_admin', False):
+        return True
+    return getattr(user, 'is_instructor', False) and bool(lab.user_id) and str(lab.user_id) == str(user.id)
+
+
+def ensure_can_edit_lab(user, lab):
+    if not can_edit_lab(user, lab):
+        raise PermissionDenied("Vous ne pouvez modifier que vos propres labs.")
+
+
+def ensure_can_manage_labs(user):
+    """Création / liste de gestion : instructeur ou administrateur."""
+    if not (user and user.is_authenticated and getattr(user, 'is_instructor', False)):
+        raise PermissionDenied("Réservé aux instructeurs et aux administrateurs.")

@@ -51,7 +51,7 @@ def accumulate_practice_seconds(user_id, lab, previous_active_at, now):
 @permission_classes([IsAuthenticated])
 def lab_session(request, lab_id):
     user_id = get_user_id(request)
-    lab = get_lab(lab_id)
+    lab = get_lab(lab_id, request.user)
 
     if request.method == 'GET':
         session = LabSession.objects.filter(user_id=user_id, lab=lab).first()
@@ -133,7 +133,7 @@ def lab_session(request, lab_id):
 @permission_classes([IsAuthenticated])
 def heartbeat_session(request, lab_id):
     user_id = get_user_id(request)
-    lab = get_lab(lab_id)
+    lab = get_lab(lab_id, request.user)
     now = timezone.now()
     session = LabSession.objects.filter(user_id=user_id, lab=lab).first()
     if session is None:
@@ -152,7 +152,7 @@ def heartbeat_session(request, lab_id):
 @permission_classes([IsAuthenticated])
 def complete_session(request, lab_id):
     user_id = get_user_id(request)
-    lab = get_lab(lab_id)
+    lab = get_lab(lab_id, request.user)
     now = timezone.now()
 
     previous = (
@@ -194,7 +194,7 @@ def complete_session(request, lab_id):
 @permission_classes([IsAuthenticated])
 def uncomplete_session(request, lab_id):
     user_id = get_user_id(request)
-    lab = get_lab(lab_id)
+    lab = get_lab(lab_id, request.user)
     now = timezone.now()
     session = LabSession.objects.filter(user_id=user_id, lab=lab).first()
     if session is None:
@@ -225,7 +225,7 @@ def uncomplete_session(request, lab_id):
 @permission_classes([IsAuthenticated])
 def reset_session(request, lab_id):
     user_id = get_user_id(request)
-    lab = get_lab(lab_id)
+    lab = get_lab(lab_id, request.user)
     now = timezone.now()
 
     LabSession.objects.filter(user_id=user_id, lab=lab).update(

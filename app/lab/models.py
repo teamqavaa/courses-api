@@ -1,8 +1,9 @@
 import uuid
 
 from django.db import models
+from django.utils import timezone
 
-from .slugs import make_unique_slug
+from .slugs import RESERVED_SLUGS, make_unique_slug
 
 
 class Skill(models.Model):
@@ -60,6 +61,7 @@ class SkillPrerequisite(models.Model):
 class Lab(models.Model):
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Draft'
+        REVIEW = 'review', 'Pending review'
         PUBLISHED = 'published', 'Published'
 
     class Difficulty(models.TextChoices):
@@ -93,7 +95,14 @@ class Lab(models.Model):
     )
     starter_code = models.TextField(blank=True, default='')
     skills = models.ManyToManyField(Skill, blank=True, related_name='labs')
+    # Auteur (sub du token SSO) : un instructeur ne gère que ses labs, un admin tous.
+    # Vide pour les labs importés du catalogue (gérables par les admins uniquement).
+    user_id = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    user_email = models.EmailField(blank=True, default='')
+    author_name = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
+    # default plutôt qu'auto_now : les fixtures du catalogue (loaddata, mode raw) n'ont pas ce champ
+    updated_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         ordering = ['title']
@@ -102,8 +111,9 @@ class Lab(models.Model):
         if not self.slug:
             used_slugs = set(
                 type(self).objects.values_list('slug', flat=True)
-            )
+            ) | RESERVED_SLUGS
             self.slug = make_unique_slug(self.title, used_slugs)
+        self.updated_at = timezone.now()
         super().save(*args, **kwargs)
 
     def __str__(self):

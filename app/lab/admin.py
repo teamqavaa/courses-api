@@ -39,9 +39,9 @@ class LabObjectiveInline(admin.TabularInline):
 
 @admin.register(Lab)
 class LabAdmin(admin.ModelAdmin):
-    list_display = ['title', 'slug', 'language', 'difficulty', 'status']
+    list_display = ['title', 'slug', 'language', 'difficulty', 'status', 'user_email', 'updated_at']
     list_filter = ['status', 'language', 'difficulty']
-    search_fields = ['title', 'slug']
+    search_fields = ['title', 'slug', 'user_email', 'user_id']
     prepopulated_fields = {'slug': ('title',)}
     filter_horizontal = ['skills']
     inlines = [LabObjectiveInline]
