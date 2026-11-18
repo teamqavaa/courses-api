@@ -8,6 +8,7 @@ from orders.models import Order
 from payments.models import Payment, PaymentProvider
 from enrollments.models import Enrollment
 from carts.models import Cart
+from core.signals import enrollments_created
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +160,8 @@ class PaymentService:
         if enrollments_to_create:
             Enrollment.objects.bulk_create(enrollments_to_create)
             logger.info(f"{len(enrollments_to_create)} inscriptions créées pour l'utilisateur ID {user_id}")
+            # bulk_create n'émet pas post_save : rattrapage des labs déjà réussis (enrollments/receivers.py)
+            enrollments_created.send(sender=Enrollment, enrollments=enrollments_to_create)
 
         # 4. Vider le panier de l'utilisateur suite au paiement validé
         try:
