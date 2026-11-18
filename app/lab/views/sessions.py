@@ -9,6 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from lab.models import LabSession, UserProgress
+from lab.models import Lab
+from core.signals import activity_completed
 from lab.serializers import (
     OkSerializer,
     SessionGetResponseSerializer,
@@ -185,6 +187,8 @@ def complete_session(request, lab_id):
             'completed_at': now,
         },
     )
+    # Lab réussi : enrollments/receivers.py marque les leçons LAB liées (score inconnu pour un lab)
+    activity_completed.send(sender=Lab, user_id=user_id, lab=lab, score=None)
 
     return Response({'ok': True})
 
