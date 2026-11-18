@@ -52,6 +52,7 @@ urlpatterns = [
     path('api/', include('resources.urls')),
     path('api/', include('payment_providers.urls')),
     path('api/', include('lab.urls')),
+    path('api/', include('quizzes.urls')),
 
 ]
 

@@ -24,6 +24,8 @@ def _activity_lessons(lab=None, quiz=None):
     """Leçons qui référencent l'activité réussie."""
     if lab is not None:
         return Lesson.objects.filter(lesson_type=Lesson.LessonType.LAB, lab=lab)
+    if quiz is not None:
+        return Lesson.objects.filter(lesson_type=Lesson.LessonType.QUIZ, quiz=quiz)
     return Lesson.objects.none()
 
 

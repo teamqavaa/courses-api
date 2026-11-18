@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'payment_providers',
     'enrollments',
     'lab',
+    'quizzes',
 ]
 
 MIDDLEWARE = [

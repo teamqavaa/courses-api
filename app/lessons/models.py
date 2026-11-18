@@ -67,6 +67,15 @@ class Lesson(models.Model):
         verbose_name="Lab pratique",
         help_text="Obligatoire pour une leçon LAB ; un lab utilisé ne peut pas être supprimé"
     )
+    quiz = models.OneToOneField(
+        'quizzes.Quiz',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lesson',
+        verbose_name="Quiz",
+        help_text="Quiz d'une leçon QUIZ (facultatif : les leçons QUIZ existantes n'en ont pas)"
+    )
 
     # --- Métadonnées & Organisation ---
     duration_in_minutes = models.PositiveIntegerField(
