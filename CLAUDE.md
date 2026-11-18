@@ -59,6 +59,61 @@ Auteur d'un lab : `user_id` (`sub`), `user_email`, `author_name` ; vide pour les
 
 `manage` est un slug réservé (`lab/slugs.py`). `/api/skills/<slug>/labs/` reste limité aux labs publiés.
 
+`POST /api/sessions/<uuid>/complete/` émet `activity_completed(sender=Lab, user_id, lab, score=None)` après avoir
+marqué la session et `UserProgress` terminées (réponse inchangée : `200 {"ok": true}`). `uncomplete/` et `reset/`
+n'émettent rien. ⚠ `complete/` **fait confiance au front** : il ne vérifie pas que les étapes sont réussies, et
+`LabObjective` n'a aucun critère de réussite. Correction envisagée (non faite) : champ `LabObjective.tests`
+(`[{stdin, expected}]`) et route `POST /api/sessions/<uuid>/verify/` exécutant le code avec Piston avant de
+marquer le lab terminé. Tests : `lab/tests/test_signal.py`, `enrollments/tests_lab_completion.py`.
+
+## Types de leçon (`lessons/`)
+
+`Lesson.lesson_type` est le **seul** discriminant du type de leçon (pas de champ `kind`) :
+
+| `lesson_type` | Contenu | Champ utilisé |
+|---|---|---|
+| `VIDEO` (défaut, toutes les leçons existantes) | vidéo | table `Video` (`lesson.video`) |
+| `ARTICLE`, `DOCUMENT` | texte | `content` (TextField, `''` par défaut) |
+| `LAB` | lab pratique autonome (reste visible dans `/labs`) | `lab` (FK `lab.Lab`, nullable, `on_delete=PROTECT`, `related_name="lessons"`) |
+| `QUIZ` | quiz | `quiz` (OneToOne `quizzes.Quiz`, nullable, `on_delete=SET_NULL`, `related_name="lesson"`) — **facultatif** : les leçons `QUIZ` antérieures n'en ont pas |
+
+- `Lesson.clean()` et `LessonCreateUpdateSerializer.validate()` : une leçon `LAB` exige un `lab`, qui doit être
+  **publié** quand on le (re)choisit (sinon 404 pour les apprenants) ; passer une leçon à un autre type retire son lab.
+- Lecture (`LessonDetailSerializer`, donc aussi `GET /api/courses/<slug>/` via les modules) : `content`, `lab` (id),
+  `lab_details {id, slug, title, language}` ou `null`.
+- `DELETE /api/labs/<ref>/` d'un lab utilisé par une leçon → **409** (même pour un admin), au lieu de la
+  `ProtectedError`.
+- `quiz` en écriture : seulement un quiz que l'utilisateur peut gérer et qui n'est rattaché à aucune autre leçon
+  (400 sinon) ; retiré si la leçon change de type. Lecture : `quiz` (id).
+- Tests : `lessons/tests_kinds.py`, `quizzes/tests.py` (`LessonQuizLinkTests`).
+
+## Quiz (`quizzes/`)
+
+Modèles : `Quiz` (`title`, `description`, `pass_score` % défaut 70, `max_attempts` et `time_limit_min` nullables,
+`shuffle`, `created_by` = sub), `Question` (`type` ∈ `single`, `multiple`, `true_false`, `short`, `code` ;
+`statement`, `points`, `order`, `explanation`, et pour le code `language`, `starter_code`, `tests`
+`[{stdin, expected}]`), `Choice` (`text`, `is_correct`, `order`), `QuizAttempt` (`user_id`, `started_at`,
+`submitted_at`, `score` %, `passed`, `answers`, `details`). Admin Django pour les trois.
+
+Droits (`quizzes/permissions.py`) : **gérer** = admin, auteur, ou instructeur propriétaire du cours de la leçon
+liée ; **passer** = inscrit non suspendu au cours de la leçon liée, ou gestionnaire (aperçu). Quiz sans leçon :
+gestionnaires seulement.
+
+| Route | Règle |
+|---|---|
+| `GET /api/quizzes/<id>/` | quiz, questions (choix seulement pour `single`/`multiple`/`true_false`, mélangés de façon stable par utilisateur si `shuffle`), `lesson {id, title, course_slug}`, `my_attempts {count, remaining, best_score, passed, in_progress, last_submitted_id}`. **Jamais** `is_correct`, `tests`, `explanation` ni réponses acceptées |
+| `POST /api/quizzes/<id>/attempts/` | `201` nouvelle tentative, `200` tentative en cours non expirée (un rechargement ne consomme pas d'essai), `403` au-delà de `max_attempts` (les tentatives expirées comptent) |
+| `GET /api/quiz-attempts/<id>/` | propriétaire (404 sinon) ; `score`, `passed`, `answers`, `details` seulement après soumission ; `deadline` si limite de temps |
+| `POST /api/quiz-attempts/<id>/submit/` `{answers: {<question_id>: choix \| [choix] \| texte \| code}}` | propriétaire ; `409` si déjà soumise ; hors délai (+30 s de tolérance) → score 0, `details: [{expired: true}]` ; réussite → `activity_completed(sender=Quiz, user_id, quiz, score)` |
+| `GET/POST /api/quizzes/manage/`, `GET/PATCH/DELETE /api/quizzes/manage/<id>/` | gestionnaires ; écriture imbriquée de `questions` et `choices` (id connu = mise à jour, sans id = création, absent = supprimé). `DELETE` par un instructeur d'un quiz passé par d'autres → 409 |
+
+Correction (`quizzes/services.py`) : `single`/`true_false` = bon choix ; `multiple` = **tout ou rien** ; `short` =
+égalité sans casse ni espaces superflus avec une réponse acceptée (`Choice.is_correct`) ; `code` = points ×
+tests réussis / tests (10 tests max, sortie standard sans espaces de fin = `expected`), exécuté par
+**`lab/piston.py` → `run_code(language, code, stdin)`** (appel direct de Piston, timeout, runtimes Python 3.12.0,
+PHP 8.2.3, TypeScript 5.0.3 ; Piston injoignable = test échoué, pas d'erreur 500). Score = points obtenus / total.
+Tests : `quizzes/tests.py` (Piston simulé en patchant `quizzes.services.run_code`).
+
 ## Inscriptions et progression (`enrollments/`)
 
 Modèles :
@@ -83,6 +138,24 @@ Endpoints (authentification SSO obligatoire, uniquement les inscriptions du `sub
 
 `GET /api/courses/my-enrollments/` (liste des cours inscrits, format catalogue) reste disponible.
 
+### Activités réussies → progression (`core/signals.py`, `enrollments/receivers.py`)
+
+Signaux (aucun import croisé : `lab/` et `quizzes/` émettent, `enrollments/` écoute, branché dans
+`EnrollmentsConfig.ready()`) :
+
+| Signal | Émis par | Arguments | Effet |
+|---|---|---|---|
+| `activity_completed` | réussite d'un lab ou d'un quiz | `user_id`, `lab` ou `quiz`, `score` | leçons qui référencent l'activité marquées terminées dans les cours où l'utilisateur est inscrit (hors `suspended`) |
+| `enrollments_created` | `PaymentService.fulfill_payment_success` après son `bulk_create` | `enrollments` | rattrapage (ci-dessous), car `bulk_create` n'émet pas `post_save` |
+| `post_save(Enrollment, created=True)` | toute autre création d'inscription | — | rattrapage |
+
+Rattrapage : à l'inscription, les leçons `LAB` du cours dont le lab est déjà `COMPLETED` dans `lab.UserProgress`
+sont marquées terminées. Tout passe par `services.record_lesson_progress(…, completed=True)` (idempotent,
+`completed_at` conservé, `progress_percentage` recalculé). Annuler (`uncomplete/`) ou réinitialiser (`reset/`)
+un lab **ne** dé-marque **pas** la leçon. Effet de bord connu : la leçon marquée devient la `last_lesson`
+(reprise) de l'inscription, puisque celle-ci est la dernière `LessonProgress` modifiée.
+Tests : `enrollments/tests_activity.py`.
+
 ## Commandes
 
 ```bash
@@ -95,6 +168,9 @@ docker compose run --rm app sh -c "python manage.py makemigrations"
 
 Tests d'API authentifiés : réutiliser `make_token()` / `FakeSigningKey` de `core/tests.py` et patcher
 `core.sso._jwks_client.get_signing_key_from_jwt`.
+
+Sans Docker : `app/test_settings.py` (SQLite) dans un virtualenv avec `requirements.txt` (sans `psycopg2`) :
+`cd app && python manage.py test --settings=test_settings`.
 
 ## Exécution de code locale (Piston)
 

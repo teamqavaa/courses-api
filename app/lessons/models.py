@@ -1,4 +1,5 @@
 import uuid
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -14,6 +15,8 @@ class Lesson(models.Model):
         ARTICLE = 'ARTICLE', 'Article / Texte'
         DOCUMENT = 'DOCUMENT', 'Document (PDF, PPT...)'
         QUIZ = 'QUIZ', 'Quiz / Évaluation'
+        # Leçon pratique : pointe vers un lab autonome (toujours visible dans /labs)
+        LAB = 'LAB', 'Lab pratique'
 
     id = models.UUIDField(
         primary_key=True,
@@ -46,6 +49,32 @@ class Lesson(models.Model):
         choices=LessonType.choices,
         default=LessonType.VIDEO,
         verbose_name="Type de la leçon"
+    )
+
+    # --- Contenu selon le type ---
+    content = models.TextField(
+        blank=True,
+        default='',
+        verbose_name="Contenu texte",
+        help_text="Corps d'une leçon ARTICLE / DOCUMENT (texte ou Markdown)"
+    )
+    lab = models.ForeignKey(
+        'lab.Lab',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='lessons',
+        verbose_name="Lab pratique",
+        help_text="Obligatoire pour une leçon LAB ; un lab utilisé ne peut pas être supprimé"
+    )
+    quiz = models.OneToOneField(
+        'quizzes.Quiz',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lesson',
+        verbose_name="Quiz",
+        help_text="Quiz d'une leçon QUIZ (facultatif : les leçons QUIZ existantes n'en ont pas)"
     )
 
     # --- Métadonnées & Organisation ---
@@ -94,3 +123,9 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f"Leçon {self.order}: {self.title}"
+
+    def clean(self):
+        """Une leçon LAB doit pointer vers un lab."""
+        super().clean()
+        if self.lesson_type == self.LessonType.LAB and not self.lab_id:
+            raise ValidationError({'lab': "Une leçon de type LAB doit être rattachée à un lab."})

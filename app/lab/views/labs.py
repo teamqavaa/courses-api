@@ -102,6 +102,12 @@ def lab_detail(request, lab_ref):
                            "Passez-le en brouillon pour le retirer du catalogue."},
                 status=status.HTTP_409_CONFLICT,
             )
+        # Lab utilisé par une leçon de cours (Lesson.lab, on_delete=PROTECT) : 409 plutôt qu'une 500
+        if lab.lessons.exists():
+            return Response(
+                {'detail': "Ce lab est utilisé par une leçon de cours : retirez-le du programme avant de le supprimer."},
+                status=status.HTTP_409_CONFLICT,
+            )
         lab.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
