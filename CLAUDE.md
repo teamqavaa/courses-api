@@ -102,6 +102,24 @@ Endpoints (authentification SSO obligatoire, uniquement les inscriptions du `sub
 
 `GET /api/courses/my-enrollments/` (liste des cours inscrits, format catalogue) reste disponible.
 
+### Activités réussies → progression (`core/signals.py`, `enrollments/receivers.py`)
+
+Signaux (aucun import croisé : `lab/` et `quizzes/` émettent, `enrollments/` écoute, branché dans
+`EnrollmentsConfig.ready()`) :
+
+| Signal | Émis par | Arguments | Effet |
+|---|---|---|---|
+| `activity_completed` | réussite d'un lab ou d'un quiz | `user_id`, `lab` ou `quiz`, `score` | leçons qui référencent l'activité marquées terminées dans les cours où l'utilisateur est inscrit (hors `suspended`) |
+| `enrollments_created` | `PaymentService.fulfill_payment_success` après son `bulk_create` | `enrollments` | rattrapage (ci-dessous), car `bulk_create` n'émet pas `post_save` |
+| `post_save(Enrollment, created=True)` | toute autre création d'inscription | — | rattrapage |
+
+Rattrapage : à l'inscription, les leçons `LAB` du cours dont le lab est déjà `COMPLETED` dans `lab.UserProgress`
+sont marquées terminées. Tout passe par `services.record_lesson_progress(…, completed=True)` (idempotent,
+`completed_at` conservé, `progress_percentage` recalculé). Annuler (`uncomplete/`) ou réinitialiser (`reset/`)
+un lab **ne** dé-marque **pas** la leçon. Effet de bord connu : la leçon marquée devient la `last_lesson`
+(reprise) de l'inscription, puisque celle-ci est la dernière `LessonProgress` modifiée.
+Tests : `enrollments/tests_activity.py`.
+
 ## Commandes
 
 ```bash
