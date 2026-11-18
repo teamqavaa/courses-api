@@ -59,6 +59,25 @@ Auteur d'un lab : `user_id` (`sub`), `user_email`, `author_name` ; vide pour les
 
 `manage` est un slug réservé (`lab/slugs.py`). `/api/skills/<slug>/labs/` reste limité aux labs publiés.
 
+## Types de leçon (`lessons/`)
+
+`Lesson.lesson_type` est le **seul** discriminant du type de leçon (pas de champ `kind`) :
+
+| `lesson_type` | Contenu | Champ utilisé |
+|---|---|---|
+| `VIDEO` (défaut, toutes les leçons existantes) | vidéo | table `Video` (`lesson.video`) |
+| `ARTICLE`, `DOCUMENT` | texte | `content` (TextField, `''` par défaut) |
+| `LAB` | lab pratique autonome (reste visible dans `/labs`) | `lab` (FK `lab.Lab`, nullable, `on_delete=PROTECT`, `related_name="lessons"`) |
+| `QUIZ` | quiz | champ `quiz` ajouté avec l'app `quizzes/` |
+
+- `Lesson.clean()` et `LessonCreateUpdateSerializer.validate()` : une leçon `LAB` exige un `lab`, qui doit être
+  **publié** quand on le (re)choisit (sinon 404 pour les apprenants) ; passer une leçon à un autre type retire son lab.
+- Lecture (`LessonDetailSerializer`, donc aussi `GET /api/courses/<slug>/` via les modules) : `content`, `lab` (id),
+  `lab_details {id, slug, title, language}` ou `null`.
+- `DELETE /api/labs/<ref>/` d'un lab utilisé par une leçon → **409** (même pour un admin), au lieu de la
+  `ProtectedError`.
+- Tests : `lessons/tests_kinds.py`.
+
 ## Inscriptions et progression (`enrollments/`)
 
 Modèles :
@@ -95,6 +114,9 @@ docker compose run --rm app sh -c "python manage.py makemigrations"
 
 Tests d'API authentifiés : réutiliser `make_token()` / `FakeSigningKey` de `core/tests.py` et patcher
 `core.sso._jwks_client.get_signing_key_from_jwt`.
+
+Sans Docker : `app/test_settings.py` (SQLite) dans un virtualenv avec `requirements.txt` (sans `psycopg2`) :
+`cd app && python manage.py test --settings=test_settings`.
 
 ## Exécution de code locale (Piston)
 
