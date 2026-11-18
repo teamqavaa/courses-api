@@ -75,7 +75,7 @@ marquer le lab terminé. Tests : `lab/tests/test_signal.py`, `enrollments/tests_
 | `VIDEO` (défaut, toutes les leçons existantes) | vidéo | table `Video` (`lesson.video`) |
 | `ARTICLE`, `DOCUMENT` | texte | `content` (TextField, `''` par défaut) |
 | `LAB` | lab pratique autonome (reste visible dans `/labs`) | `lab` (FK `lab.Lab`, nullable, `on_delete=PROTECT`, `related_name="lessons"`) |
-| `QUIZ` | quiz | champ `quiz` ajouté avec l'app `quizzes/` |
+| `QUIZ` | quiz | `quiz` (OneToOne `quizzes.Quiz`, nullable, `on_delete=SET_NULL`, `related_name="lesson"`) — **facultatif** : les leçons `QUIZ` antérieures n'en ont pas |
 
 - `Lesson.clean()` et `LessonCreateUpdateSerializer.validate()` : une leçon `LAB` exige un `lab`, qui doit être
   **publié** quand on le (re)choisit (sinon 404 pour les apprenants) ; passer une leçon à un autre type retire son lab.
@@ -83,7 +83,36 @@ marquer le lab terminé. Tests : `lab/tests/test_signal.py`, `enrollments/tests_
   `lab_details {id, slug, title, language}` ou `null`.
 - `DELETE /api/labs/<ref>/` d'un lab utilisé par une leçon → **409** (même pour un admin), au lieu de la
   `ProtectedError`.
-- Tests : `lessons/tests_kinds.py`.
+- `quiz` en écriture : seulement un quiz que l'utilisateur peut gérer et qui n'est rattaché à aucune autre leçon
+  (400 sinon) ; retiré si la leçon change de type. Lecture : `quiz` (id).
+- Tests : `lessons/tests_kinds.py`, `quizzes/tests.py` (`LessonQuizLinkTests`).
+
+## Quiz (`quizzes/`)
+
+Modèles : `Quiz` (`title`, `description`, `pass_score` % défaut 70, `max_attempts` et `time_limit_min` nullables,
+`shuffle`, `created_by` = sub), `Question` (`type` ∈ `single`, `multiple`, `true_false`, `short`, `code` ;
+`statement`, `points`, `order`, `explanation`, et pour le code `language`, `starter_code`, `tests`
+`[{stdin, expected}]`), `Choice` (`text`, `is_correct`, `order`), `QuizAttempt` (`user_id`, `started_at`,
+`submitted_at`, `score` %, `passed`, `answers`, `details`). Admin Django pour les trois.
+
+Droits (`quizzes/permissions.py`) : **gérer** = admin, auteur, ou instructeur propriétaire du cours de la leçon
+liée ; **passer** = inscrit non suspendu au cours de la leçon liée, ou gestionnaire (aperçu). Quiz sans leçon :
+gestionnaires seulement.
+
+| Route | Règle |
+|---|---|
+| `GET /api/quizzes/<id>/` | quiz, questions (choix seulement pour `single`/`multiple`/`true_false`, mélangés de façon stable par utilisateur si `shuffle`), `lesson {id, title, course_slug}`, `my_attempts {count, remaining, best_score, passed, in_progress, last_submitted_id}`. **Jamais** `is_correct`, `tests`, `explanation` ni réponses acceptées |
+| `POST /api/quizzes/<id>/attempts/` | `201` nouvelle tentative, `200` tentative en cours non expirée (un rechargement ne consomme pas d'essai), `403` au-delà de `max_attempts` (les tentatives expirées comptent) |
+| `GET /api/quiz-attempts/<id>/` | propriétaire (404 sinon) ; `score`, `passed`, `answers`, `details` seulement après soumission ; `deadline` si limite de temps |
+| `POST /api/quiz-attempts/<id>/submit/` `{answers: {<question_id>: choix \| [choix] \| texte \| code}}` | propriétaire ; `409` si déjà soumise ; hors délai (+30 s de tolérance) → score 0, `details: [{expired: true}]` ; réussite → `activity_completed(sender=Quiz, user_id, quiz, score)` |
+| `GET/POST /api/quizzes/manage/`, `GET/PATCH/DELETE /api/quizzes/manage/<id>/` | gestionnaires ; écriture imbriquée de `questions` et `choices` (id connu = mise à jour, sans id = création, absent = supprimé). `DELETE` par un instructeur d'un quiz passé par d'autres → 409 |
+
+Correction (`quizzes/services.py`) : `single`/`true_false` = bon choix ; `multiple` = **tout ou rien** ; `short` =
+égalité sans casse ni espaces superflus avec une réponse acceptée (`Choice.is_correct`) ; `code` = points ×
+tests réussis / tests (10 tests max, sortie standard sans espaces de fin = `expected`), exécuté par
+**`lab/piston.py` → `run_code(language, code, stdin)`** (appel direct de Piston, timeout, runtimes Python 3.12.0,
+PHP 8.2.3, TypeScript 5.0.3 ; Piston injoignable = test échoué, pas d'erreur 500). Score = points obtenus / total.
+Tests : `quizzes/tests.py` (Piston simulé en patchant `quizzes.services.run_code`).
 
 ## Inscriptions et progression (`enrollments/`)
 
