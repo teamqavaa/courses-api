@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 from courses.models import Course
+from courses.seed_labs import lab_lessons_by_module
+from courses.seed_quizzes import quiz_lessons_by_module
 from categories.models import Category
 from tags.models import Tag
 from highlights.models import CourseHighlight
@@ -328,6 +330,10 @@ class Command(BaseCommand):
             # Modules, Lessons & Videos
             # Note: Si des commandes existent, les modules/leçons associés aux cours peuvent être mis à jour sans danger de suppression globale de la table `Course`.
             course.modules.all().delete()
+            # Labs pratiques du cours (créés une seule fois, avec leurs étapes) : courses/seed_labs.py
+            lab_lessons = lab_lessons_by_module(course_item["title"])
+            # QCM du cours (créés une seule fois, tentatives conservées) : courses/seed_quizzes.py
+            quiz_lessons = quiz_lessons_by_module(course_item["title"])
             for mod_data in course_item.get("modules", []):
                 module = Module.objects.create(
                     course=course,
@@ -352,6 +358,28 @@ class Command(BaseCommand):
                         lesson=lesson,
                         title=f"Video: {les_data['title']}",
                         video_url=current_youtube_url
+                    )
+
+                # Leçons LAB : pas de vidéo, le lecteur ouvre le lab rattaché
+                for les_data, lab in lab_lessons.get(mod_data["order"], []):
+                    Lesson.objects.create(
+                        module=module,
+                        title=les_data["title"],
+                        duration_in_minutes=les_data["duration_in_minutes"],
+                        order=les_data["order"],
+                        lesson_type=Lesson.LessonType.LAB,
+                        lab=lab,
+                    )
+
+                # Leçons QUIZ : le lecteur affiche le QCM rattaché
+                for les_data, quiz in quiz_lessons.get(mod_data["order"], []):
+                    Lesson.objects.create(
+                        module=module,
+                        title=les_data["title"],
+                        duration_in_minutes=les_data["duration_in_minutes"],
+                        order=les_data["order"],
+                        lesson_type=Lesson.LessonType.QUIZ,
+                        quiz=quiz,
                     )
 
             # Resources

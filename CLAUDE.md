@@ -86,6 +86,13 @@ marquer le lab terminé. Tests : `lab/tests/test_signal.py`, `enrollments/tests_
 - `quiz` en écriture : seulement un quiz que l'utilisateur peut gérer et qui n'est rattaché à aucune autre leçon
   (400 sinon) ; retiré si la leçon change de type. Lecture : `quiz` (id).
 - Tests : `lessons/tests_kinds.py`, `quizzes/tests.py` (`LessonQuizLinkTests`).
+- Seed (`seed_courses`, lancé aussi **à chaque déploiement**) : `courses/seed_labs.py` crée 4 labs publiés de
+  3 étapes (un par cours de démo) et une leçon `LAB` qui les rattache. Lab et étapes créés **seulement s'ils
+  n'existent pas** (slug) : une modification faite dans l'admin ou *Manage labs* n'est jamais écrasée.
+  `courses/seed_quizzes.py` ajoute un QCM par cours (choix unique, multiples, vrai/faux ; pas de code), leçon `QUIZ`
+  placée après la leçon `LAB`. Quiz créé une seule fois, retrouvé par `created_by = "seed:<clé>"` : tentatives
+  et modifications de l'éditeur conservées alors que les leçons sont recréées à chaque seed.
+  Tests : `courses/test_seed_courses.py`.
 
 ## Quiz (`quizzes/`)
 
