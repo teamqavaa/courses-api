@@ -59,6 +59,13 @@ Auteur d'un lab : `user_id` (`sub`), `user_email`, `author_name` ; vide pour les
 
 `manage` est un slug réservé (`lab/slugs.py`). `/api/skills/<slug>/labs/` reste limité aux labs publiés.
 
+`POST /api/sessions/<uuid>/complete/` émet `activity_completed(sender=Lab, user_id, lab, score=None)` après avoir
+marqué la session et `UserProgress` terminées (réponse inchangée : `200 {"ok": true}`). `uncomplete/` et `reset/`
+n'émettent rien. ⚠ `complete/` **fait confiance au front** : il ne vérifie pas que les étapes sont réussies, et
+`LabObjective` n'a aucun critère de réussite. Correction envisagée (non faite) : champ `LabObjective.tests`
+(`[{stdin, expected}]`) et route `POST /api/sessions/<uuid>/verify/` exécutant le code avec Piston avant de
+marquer le lab terminé. Tests : `lab/tests/test_signal.py`, `enrollments/tests_lab_completion.py`.
+
 ## Types de leçon (`lessons/`)
 
 `Lesson.lesson_type` est le **seul** discriminant du type de leçon (pas de champ `kind`) :
